@@ -267,7 +267,7 @@ void FCarlaServer::FPimpl::BindActions()
   };
 
 
-  BIND_SYNC(get_parent) << [this] (carla::ActorId id) -> R<carla::rpc::ActorId>
+  /*BIND_SYNC(get_parent) << [this] (carla::ActorId id) -> R<carla::rpc::ActorId>
   {
     UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d"), id);
     //FindCarlaActor return a *FCarlaActor
@@ -286,7 +286,7 @@ void FCarlaServer::FPimpl::BindActions()
       UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d, actor not found"), id);
     }
     return 0u;
-  };
+  };*/
   /*
   END Code added by Nicholas Berardo
   */
@@ -837,7 +837,7 @@ void FCarlaServer::FPimpl::BindActions()
       RESPOND_ERROR("unable to attach actor: parent actor not found");
     }
 
-    CarlaActor->SetParent(ParentId);
+   f CarlaActor->SetParent(ParentId);
     CarlaActor->SetAttachmentType(InAttachmentType);
     ParentCarlaActor->AddChildren(CarlaActor->GetActorId());
 
