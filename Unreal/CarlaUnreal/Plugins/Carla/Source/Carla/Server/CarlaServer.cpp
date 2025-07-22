@@ -267,7 +267,7 @@ void FCarlaServer::FPimpl::BindActions()
   };
 
 
-  /*BIND_SYNC(get_parent) << [this] (carla::ActorId id) -> R<carla::rpc::ActorId>
+  /**BIND_SYNC(get_parent) << [this] (carla::ActorId id) -> R<carla::rpc::ActorId>
   {
     UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d"), id);
     //FindCarlaActor return a *FCarlaActor
