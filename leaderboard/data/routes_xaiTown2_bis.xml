@@ -1,0 +1,78 @@
+<routes>
+    <route id="0" town="small_City_LVL">
+        <weathers>
+            <weather route_percentage="100"
+                cloudiness="0" precipitation="0" precipitation_deposits="0" wind_intensity="0" sun_azimuth_angle="0" sun_altitude_angle="75" />
+        </weathers>
+        <indications lang="es"></indications>
+        <waypoints>
+            <position x="-146.06" y="-326.38" z="0.00"/>
+            <position x="-256.60" y="-299.54" z="0.00"/>
+            <position x="-256.59" y="-254.34" z="0.00"/>
+            <position x="-256.63" y="-204.65" z="0.00"/>
+            <position x="-256.65" y="-180.61" z="0.00"/>
+            <position x="-256.68" y="-137.33" z="0.00"/>
+            <position x="-256.69" y="-116.81" z="0.00"/>
+            <position x="-256.70" y="-66.80" z="0.00" />
+            <position x="-260.52" y="-29.29" z="0.00" />
+            <position x="-285.19" y="-10.82" z="0.00" />
+            <position x="-354.11" y="-10.76" z="0.00" />
+            <position x="-375.62" y="-25.45" z="0.00" />
+            <position x="-375.67" y="-66.80" z="0.00" />
+            <position x="-397.07" y="-92.97" z="0.00" />
+            <position x="-424.96" y="-92.98" z="0.00" />
+            <position x="-475.93" y="-96.88" z="0.00" />
+            <position x="-498.74" y="-125.15" z="0.00"/>
+            <position x="-498.72" y="-140.86" z="0.00"/>
+            <position x="-523.06" y="-161.70" z="0.00"/>
+            <position x="-601.60" y="-161.71" z="0.00"/>
+        </waypoints>
+        <traffic_flows>
+        </traffic_flows>
+        <failtriggers>
+            <position x="-502.35" y="-397.96" z="0.00"/>
+            <position x="-379.55" y="-295.69" z="0.00"/>
+        </failtriggers>
+        <scenarios>
+            <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
+                <trigger_point x="-179.08" y="-326.39" z="0.00" yaw="180.01"/>
+                <distance value="10"/>
+                <blocker_model value="vehicle.audi.tt"/>
+                <crossing_angle value="10"/>
+            </scenario>
+            <scenario name="SignalizedJunctionLeftTurn_1" type="NonSignalizedJunctionLeftTurn">
+                <trigger_point x="-192.54" y="-326.39" z="0.00" yaw="180.01"/>
+                <flow_speed value="16.6"/>
+                <source_dist_interval from="30" to="65"/>
+            </scenario>
+            <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
+                <trigger_point x="-256.68" y="-121.30" z="0.00" yaw="90.03"/>
+                <distance value="10"/>
+                <blocker_model value="static.prop.container"/>
+                <crossing_angle value="10"/>
+            </scenario>
+            <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
+                <trigger_point x="-312.12" y="-10.80" z="0.00" yaw="179.94"/>
+                <distance value="10"/>
+                <blocker_model value="vehicle.nissan.patrol_2021"/>
+                <crossing_angle value="10"/>
+            </scenario>
+            <!-- <scenario name="SignalizedJunctionLeftTurn_1" type="NonSignalizedJunctionLeftTurn">
+                <trigger_point x="-375.65" y="-55.90" z="0.00" yaw="-90.06"/>
+                <flow_speed value="16.6"/>
+                <source_dist_interval from="30" to="65"/>
+            </scenario> -->
+            <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
+                <trigger_point x="-463.43" y="-96.86" z="0.00" yaw="180.07"/>
+                <distance value="10"/>
+                <blocker_model value="static.prop.haybalelb"/>
+                <crossing_angle value="10"/>
+            </scenario>
+            <scenario name="SignalizedJunctionLeftTurn_1" type="NonSignalizedJunctionLeftTurn">
+                <trigger_point x="-498.74" y="-123.55" z="0.00" yaw="-89.94"/>
+                <flow_speed value="16.6"/>
+                <source_dist_interval from="30" to="65"/>
+            </scenario>
+        </scenarios>
+    </route>
+</routes>

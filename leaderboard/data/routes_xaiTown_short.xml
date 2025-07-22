@@ -1,0 +1,45 @@
+<routes>
+    <route id="0" town="small_City_LVL">
+        <weathers>
+            <weather route_percentage="100"
+                cloudiness="0" precipitation="0" precipitation_deposits="0" wind_intensity="0" sun_azimuth_angle="0" sun_altitude_angle="75" />
+        </weathers>
+        <indications lang="es"></indications>
+        <waypoints>
+            <position x="-480.10" y="-158.08" z="0.00" />
+            <position x="-395.79" y="-158.06" z="0.00" />
+            <position x="-375.78" y="-175.16" z="0.00" />
+            <position x="-375.76" y="-206.26" z="0.00" />
+            <position x="-375.76" y="-254.66" z="0.00" />
+            <position x="-375.76" y="-299.22" z="0.00" />
+            <position x="-375.77" y="-348.89" z="0.00" />
+            <position x="-375.82" y="-394.08" z="0.00" />
+            <position x="-375.82" y="-493.81" z="0.00" />
+        </waypoints>
+        <llmtriggers>
+            <position x="-502.35" y="-397.96" z="0.00" text="HEYYYYYYYYYYYYYYYYYYYYYYYY"/>
+        </llmtriggers>
+        <failtriggers>
+        </failtriggers>
+        <traffic_flows>
+        </traffic_flows>
+        <scenarios>
+            <scenario name="SignalizedJunctionLeftTurn_1" type="NonSignalizedJunctionLeftTurn">
+                <trigger_point x="-423.30" y="-158.07" z="0.00" yaw="0.02"/>
+                <flow_speed value="6.0"/>
+                <source_dist_interval from="30" to="65"/>
+            </scenario>
+            <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
+                <trigger_point x="-375.77" y="-192.15" z="0.00" yaw="-89.96"/>
+                <distance value="10"/>
+                <blocker_model value="static.prop.haybalelb"/>
+                <crossing_angle value="10"/>
+            </scenario>
+            <scenario name="ConstructionObstacleTwoWays_1" type="ConstructionObstacleTwoWays">
+                <trigger_point x="-375.80" y="-341.96" z="0.00" yaw="-90.06"/>
+                <distance value="30"/>
+                <frequency from="100" to="120"/>
+            </scenario>
+        </scenarios>
+    </route>
+</routes>

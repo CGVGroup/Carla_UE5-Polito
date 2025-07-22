@@ -1,0 +1,29 @@
+<routes>
+    <route id="0" town="Town10HD_Opt">
+        <weathers>
+            <weather route_percentage="100"
+                cloudiness="0" precipitation="0" precipitation_deposits="0" wind_intensity="0" sun_azimuth_angle="0" sun_altitude_angle="75" />
+        </weathers>
+        <indications lang="es"></indications>
+        <waypoints>
+            <position x="6.69" y="127.58" z="0.00"/>
+            <position x="-22.22" y="130.07" z="0.00"/>
+            <position x="-103.36" y="86.44" z="0.00"/>
+            <position x="-65.04" y="-68.67" z="0.00"/>
+            <position x="-97.86" y="-53.30" z="0.00"/>
+        </waypoints>
+        <traffic_flows>
+        </traffic_flows>
+        <scenarios>
+        <position />
+            <!-- <scenario name="SignalizedJunctionLeftTurn_1" type="SignalizedJunctionLeftTurn">
+                <trigger_point x="6.69" y="130.58" z="0.00" yaw="180.0" />
+                <flow_speed value="8"/>
+                <source_dist_interval from="10" to="55"/>
+            </scenario> -->
+            <scenario name="HardBreakRoute_4" type="HardBreakRoute">
+                <trigger_point x="6.69" y="130.58" z="0.00" yaw="180.0" />
+            </scenario>
+        </scenarios>
+    </route>
+</routes>

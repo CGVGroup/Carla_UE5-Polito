@@ -1,0 +1,32 @@
+<routes>
+    <route id="0" town="small_City_LVL">
+        <weathers>
+            <weather route_percentage="100"
+                cloudiness="0" precipitation="0" precipitation_deposits="0" wind_intensity="0" sun_azimuth_angle="0" sun_altitude_angle="75" />
+        </weathers>
+        <indications lang="es"></indications>
+        <waypoints>
+            	<position x="-379.55" y="-252.74" z="0.00" />
+                <position x="-379.55" y="-298.26" z="0.00" />
+                <position x="-353.79" y="-326.40" z="0.00" />
+                <position x="-296.73" y="-326.40" z="0.00" />
+                <position x="-260.47" y="-363.99" z="0.00" />
+                <position x="-260.51" y="-393.49" z="0.00" />
+        </waypoints>
+        <traffic_flows>
+        </traffic_flows>
+        <scenarios>
+            <!-- <scenario name="ConstructionObstacleTwoWays_2" type="ConstructionObstacleTwoWays">
+                    <trigger_point x="-379.55" y="-252.74" z="0.00" yaw="90.00" />
+                    <distance value="10"/>
+                    <frequency from="45" to="100"/>
+            </scenario> -->
+            <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
+                 <trigger_point x="-379.55" y="-252.74" z="0.00" yaw="90.00" />
+                <distance value="10"/>
+                <blocker_model value="static.prop.advertisement"/>
+                <crossing_angle value="10"/>
+            </scenario>
+        </scenarios>
+    </route>
+</routes>

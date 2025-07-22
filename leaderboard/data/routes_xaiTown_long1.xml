@@ -1,0 +1,131 @@
+<routes>
+    <route id="0" town="small_City_LVL">
+        <weathers>
+            <weather route_percentage="100"
+                cloudiness="0" precipitation="0" precipitation_deposits="0" wind_intensity="0" sun_azimuth_angle="0" sun_altitude_angle="75" />
+        </weathers>
+        <indications lang="es"></indications>
+        <waypoints>
+            <!-- <position x="-145.53" y="-326.38" z="0.00" />
+            <position x="-213.58" y="-326.39" z="0.00" />
+            <position x="-325.95" y="-326.40" z="0.00" />
+            <position x="-379.55" y="-277.24" z="0.00" />
+            <position x="-379.56" y="-187.33" z="0.00"/>
+            <position x="-379.47" y="-124.91" z="0.00"/>
+            <position x="-325.33" y="-88.95" z="0.00" />
+            <position x="-149.27" y="-85.15" z="0.00" />
+            <position x="-128.29" y="-59.35" z="0.00" />
+            <position x="-128.31" y="-37.49" z="0.00" />
+            <position x="-128.28" y="11.19" z="0.00" />
+            <position x="-128.28" y="36.16" z="0.00" />
+            <position x="-159.26" y="71.21" z="0.00" />
+            <position x="-206.71" y="71.23" z="0.00" />
+            <position x="-248.92" y="48.66" z="0.00" /> -->
+            <position x="-252.68" y="15.56" z="0.00" />
+            <position x="-252.67" y="-52.49" z="0.00" />
+            <position x="-252.64" y="-132.40" z="0.00" />
+            <position x="-283.50" y="-161.66" z="0.00" />
+            <position x="-345.93" y="-161.68" z="0.00" />
+            <position x="-402.75" y="-161.72" z="0.00" />
+            <position x="-462.06" y="-161.74" z="0.00" />
+            <position x="-502.51" y="-137.38" z="0.00" />
+            <position x="-502.53" y="-119.27" z="0.00" />
+            <position x="-525.11" y="-96.88" z="0.00" />
+            <position x="-591.28" y="-96.88" z="0.00" />
+            <position x="-621.75" y="-115.53" z="0.00" />
+            <position x="-621.78" y="-133.62" z="0.00" />
+            <position x="-592.53" y="-158.04" z="0.00" />
+            <position x="-535.09" y="-158.04" z="0.00" />
+            <position x="-464.54" y="-158.08" z="0.00" />
+            <position x="-411.48" y="-158.06" z="0.00" />
+            <position x="-279.75" y="-157.99" z="0.00" />
+            <position x="-260.48" y="-136.14" z="0.00"/>
+            <position x="-260.50" y="-64.35" z="0.00" />
+            <position x="-282.25" y="-10.83" z="0.00" />
+            <position x="-327.19" y="-10.78" z="0.00" />
+            <position x="-375.64" y="-45.60" z="0.00" />
+            <position x="-375.68" y="-137.39" z="0.00" />
+            <position x="-375.77" y="-193.59" z="0.00" />
+            <position x="-375.76" y="-290.35" z="0.00" />
+        </waypoints>
+        <llmtriggers>
+            <position x="-502.35" y="-397.96" z="0.00" text="HEYYYYYYYYYYYYYYYYYYYYYYYY"/>
+        </llmtriggers>
+        <failtriggers>
+        </failtriggers>
+        <traffic_flows>
+        </traffic_flows>
+        <scenarios>
+            <scenario name="ConstructionObstacleTwoWays_1" type="ConstructionObstacleTwoWays">
+                    <trigger_point x="-282.87" y="-326.40" z="0.00" yaw="180.00"/>
+                    <distance value="30"/>
+                    <frequency from="100" to="120"/>
+            </scenario>
+            <scenario name="SignalizedJunctionLeftTurn_1" type="NonSignalizedJunctionLeftTurn">
+                <trigger_point x="-333.44" y="-326.40" z="0.00" yaw="180.00"/>
+                <flow_speed value="6.0"/>
+                <source_dist_interval from="30" to="65"/>
+            </scenario>
+            <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
+                <trigger_point x="-379.55" y="-269.12" z="0.00" yaw="90.00"/>
+                <distance value="10"/>
+                <blocker_model value="static.prop.haybalelb"/>
+                <crossing_angle value="10"/>
+            </scenario>
+            <scenario name="SignalizedJunctionLeftTurn_1" type="NonSignalizedJunctionLeftTurn">
+                <trigger_point x="-379.56" y="-189.82" z="0.00" yaw="90.04"/>
+                <flow_speed value="6.0"/>
+                <source_dist_interval from="30" to="65"/>
+            </scenario>
+            <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
+                <trigger_point x="-359.04" y="-88.98" z="0.00" yaw="0.04"/>
+                <distance value="10"/>
+                <blocker_model value="static.prop.haybalelb"/>
+                <crossing_angle value="10"/>
+            </scenario>
+            <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
+                <trigger_point x="-128.31" y="-43.73" z="0.00" yaw="90.04"/>
+                <distance value="10"/>
+                <blocker_model value="static.prop.haybalelb"/>
+                <crossing_angle value="10"/>
+            </scenario>
+            <scenario name="ConstructionObstacleTwoWays_1" type="ConstructionObstacleTwoWays">
+                <trigger_point x="-192.97" y="71.22" z="0.00" yaw="179.98"/>
+                <distance value="30"/>
+                <frequency from="100" to="120"/>
+            </scenario>
+            <scenario name="SignalizedJunctionLeftTurn_1" type="NonSignalizedJunctionLeftTurn">
+                <trigger_point x="-252.65" y="-124.28" z="0.00" yaw="270.03"/>
+                <flow_speed value="6.0"/>
+                <source_dist_interval from="30" to="65"/>
+            </scenario>
+            <scenario name="ConstructionObstacleTwoWays_1" type="ConstructionObstacleTwoWays">
+                <trigger_point x="-280.38" y="-161.65" z="0.00" yaw="180.03"/>
+                <distance value="30"/>
+                <frequency from="100" to="120"/>
+            </scenario>
+            <scenario name="SignalizedJunctionLeftTurn_1" type="NonSignalizedJunctionLeftTurn">
+                <trigger_point x="-444.57" y="-161.74" z="0.00" yaw="180.02"/>
+                <flow_speed value="6.0"/>
+                <source_dist_interval from="30" to="65"/>
+            </scenario>
+            <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
+                <trigger_point x="-621.78" y="-134.87" z="0.00" yaw="-90.08"/>
+                <distance value="10"/>
+                <blocker_model value="static.prop.haybalelb"/>
+                <crossing_angle value="10"/>
+            </scenario>
+            <scenario name="ConstructionObstacleTwoWays_1" type="ConstructionObstacleTwoWays">
+                <trigger_point x="-600.65" y="-158.04" z="0.00" yaw="0.01"/>
+                <distance value="30"/>
+                <frequency from="100" to="120"/>
+            </scenario>
+            <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
+                <trigger_point x="-328.44" y="-158.01" z="0.00" yaw="0.03"/>
+                <distance value="10"/>
+                <blocker_model value="static.prop.haybalelb"/>
+                <crossing_angle value="10"/>
+            </scenario>
+        </scenarios>
+    </route>
+</routes>
