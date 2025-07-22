@@ -106,6 +106,18 @@ namespace detail {
       const size_t worker_threads)
     : _pimpl(std::make_unique<Pimpl>(host, port, worker_threads)) {}
 
+  //Added by Nicholas Berardo
+  //This function should call the set_actor_semantic_tag function inside CarlaServer.cpp
+  bool Client::SetActorSemanticTag(
+      rpc::ActorId id,
+      const std::string &tag) const {
+    return _pimpl->CallAndWait<bool>("set_actor_semantic_tag", id, tag);
+  }
+
+  rpc::Actor Client::GetParentActor(rpc::ActorId id) {
+    return _pimpl->CallAndWait<rpc::Actor>("get_parent", id);
+  }
+
   bool Client::IsTrafficManagerRunning(uint16_t port) const {
     return _pimpl->CallAndWait<bool>("is_traffic_manager_running", port);
   }

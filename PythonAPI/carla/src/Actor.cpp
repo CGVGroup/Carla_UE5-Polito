@@ -72,6 +72,46 @@ static auto GetLightBoxes(const cc::TrafficLight &self) {
   return result;
 }
 
+static cr::CityObjectLabel GetTagFromString(std::string Tag)
+{
+  if(Tag=="Building") return cr::CityObjectLabel::Buildings;
+  if(Tag=="Fence") return cr::CityObjectLabel::Fences;
+  if(Tag=="Pedestrian") return cr::CityObjectLabel::Pedestrians;
+  if(Tag=="Pole") return cr::CityObjectLabel::Poles;
+  if(Tag=="Other") return cr::CityObjectLabel::Other;
+  if(Tag=="Roads") return cr::CityObjectLabel::Roads;
+  if(Tag=="RoadLine") return cr::CityObjectLabel::RoadLines;
+  if(Tag=="SideWalk") return cr::CityObjectLabel::Sidewalks;
+  if(Tag=="TrafficSign") return cr::CityObjectLabel::TrafficSigns;
+  if(Tag=="Vegetation") return cr::CityObjectLabel::Vegetation;
+  if(Tag=="Car") return cr::CityObjectLabel::Car;
+  if(Tag=="Wall") return cr::CityObjectLabel::Walls;
+  if(Tag=="Sky") return cr::CityObjectLabel::Sky;
+  if(Tag=="Ground") return cr::CityObjectLabel::Ground;
+  if(Tag=="Bridge") return cr::CityObjectLabel::Bridge;
+  if(Tag=="RailTrack") return cr::CityObjectLabel::RailTrack;
+  if(Tag=="GuardRail") return cr::CityObjectLabel::GuardRail;
+  if(Tag=="TrafficLight") return cr::CityObjectLabel::TrafficLight;
+
+  //Anomlies
+  if(Tag=="Static_Anomaly") return cr::CityObjectLabel::Static_Anomaly;
+  if(Tag=="Dynamic_Anomaly") return cr::CityObjectLabel::Dynamic_Anomaly;
+  if(Tag=="Animal") return cr::CityObjectLabel::Animal;
+
+  if(Tag=="Static") return cr::CityObjectLabel::Static;
+  if(Tag=="Dynamic") return cr::CityObjectLabel::Dynamic;
+  if(Tag=="Water") return cr::CityObjectLabel::Water;
+  if(Tag=="Terrain") return cr::CityObjectLabel::Terrain;
+  if(Tag=="Truck") return cr::CityObjectLabel::Truck;
+  if(Tag=="Motorcycle") return cr::CityObjectLabel::Motorcycle;
+  if(Tag=="Bicycle") return cr::CityObjectLabel::Bicycle;
+  if(Tag=="Bus") return cr::CityObjectLabel::Bus;
+  if(Tag=="Rider") return cr::CityObjectLabel::Rider;
+  if(Tag=="Train") return cr::CityObjectLabel::Train;
+  if(Tag=="Rock") return cr::CityObjectLabel::Rock;
+  return cr::CityObjectLabel::None;
+}
+
 void export_actor() {
 
   using namespace boost::python;
@@ -106,6 +146,7 @@ void export_actor() {
       })
       .add_property("bounding_box", CALL_RETURNING_COPY(cc::Actor, GetBoundingBox))
       .def("get_world", CALL_RETURNING_COPY(cc::Actor, GetWorld))
+      .def("get_parent", &cc::Actor::GetParentActor)
       .def("get_location", &cc::Actor::GetLocation)
       .def("get_transform", &cc::Actor::GetTransform)
       .def("get_velocity", &cc::Actor::GetVelocity)
@@ -128,7 +169,18 @@ void export_actor() {
       .def("set_enable_gravity", &cc::Actor::SetEnableGravity, (arg("enabled") = true))
       .def("apply_texture", &ApplyTexture, (arg("material_parameter"), arg("texture")))
       .def("destroy", CALL_WITHOUT_GIL(cc::Actor, Destroy))
+      //This definition means: when python calls set_actor_semantic_tag, it will call the SetActorSemanticTag method
+      //of the Client (Client.cpp) class, passing the actor id and the tag as parameters.
+      .def("set_actor_semantic_tag", +[](cc::Actor &self, const std::string &tag){
+        self.GetWorld().GetEpisode().Lock()->SetActorSemanticTag(self.GetId(), tag);
+        // Add this to update also the actor.semantic_tags property
+        uint8_t tag_num_ = static_cast<uint8_t>(GetTagFromString(tag));
+        self.SetSemanticTags(tag_num_);
+
+      }, (arg("tag")))
       .def(self_ns::str(self_ns::self))
+      
+      
   ;
 
   enum_<cr::VehicleLightState::LightState>("VehicleLightState")

@@ -39,6 +39,7 @@ void UActorDispatcher::Bind(FActorDefinition Definition, SpawnFunctionType Funct
 
 void UActorDispatcher::Bind(ACarlaActorFactory &ActorFactory)
 {
+  //Here the ActoryFactory are VehicleActorFactory, PropActorFactory...
   for (const auto &Definition : ActorFactory.GetDefinitions())
   {
     Bind(Definition, [&](const FTransform &Transform, const FActorDescription &Description) {

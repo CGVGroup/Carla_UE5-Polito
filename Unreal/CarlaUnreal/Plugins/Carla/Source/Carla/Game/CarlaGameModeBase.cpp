@@ -405,8 +405,10 @@ void ACarlaGameModeBase::SpawnActorFactories()
 
   for (auto &FactoryClass : ActorFactories)
   {
+
     if (FactoryClass != nullptr)
     {
+
       auto *Factory = World->SpawnActor<ACarlaActorFactory>(FactoryClass);
       if (Factory != nullptr)
       {

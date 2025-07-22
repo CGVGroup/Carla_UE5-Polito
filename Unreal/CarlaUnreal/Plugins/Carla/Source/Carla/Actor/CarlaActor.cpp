@@ -40,6 +40,20 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include <util/ue-header-guard-end.h>
 
+  /*
+  Code added by Nicholas Berardo
+  */
+
+  void FCarlaActor::SetSemanticTag(const FString &NewTag)
+  {
+    UE_LOG(LogCarla, Warning, TEXT("Setting semantic tag %s for actor %s"), *NewTag, *TheActor->GetName());
+    ATagger::SetActorTag(TheActor, NewTag);
+  }
+
+  /*
+  END Code added by Nicholas Berardo
+  */
+
 FCarlaActor::FCarlaActor(
     IdType ActorId,
     AActor* Actor,

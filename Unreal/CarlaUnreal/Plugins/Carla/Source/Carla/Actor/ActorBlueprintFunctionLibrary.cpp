@@ -1389,6 +1389,7 @@ void UActorBlueprintFunctionLibrary::MakePropDefinition(
   FillIdAndTags(Definition, TEXT("static"),  TEXT("prop"), Parameters.Name);
   AddRecommendedValuesForActorRoleName(Definition, {TEXT("prop")});
 
+
   auto GetSize = [](EPropSize Value) {
     switch (Value)
     {
@@ -1423,6 +1424,9 @@ void UActorBlueprintFunctionLibrary::MakeBlueprintDefinition(
 {
   FillIdAndTags(Definition, TEXT("blueprint"), Parameters.Name);
   AddRecommendedValuesForActorRoleName(Definition, {TEXT("blueprint")});
+
+  //ADDED BY ME
+  Definition.Class = StaticLoadClass(AActor::StaticClass(), nullptr, *Parameters.Path);
 
   // Definition.Attributes.Emplace(FActorAttribute{
   //   EActorAttributeType::String,

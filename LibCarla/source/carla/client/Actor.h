@@ -30,6 +30,8 @@ namespace client {
 
     virtual ~Actor() = default;
 
+    rpc::Actor GetParentActor() const;
+
     /// Return the current location of the actor.
     ///
     /// @note This function does not call the simulator, it returns the location

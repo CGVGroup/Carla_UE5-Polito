@@ -72,6 +72,7 @@ FCarlaActor* FActorRegistry::Register(AActor &Actor, FActorDescription Descripti
 {
 
   FCarlaActor* CarlaActor = FindCarlaActor(DesiredId);
+  UE_LOG(LogCarla, Warning, TEXT("Registering actor %s with id %d"), *Actor.GetName(), DesiredId);
   bool IsDormant = CarlaActor && (CarlaActor->IsDormant());
   if(IsDormant)
   {

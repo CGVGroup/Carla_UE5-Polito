@@ -25,7 +25,7 @@ ExternalProject_add (
 ExternalProject_add (
   fastdds
   GIT_REPOSITORY https://github.com/eProsima/Fast-DDS.git
-  GIT_TAG ${CARLA_FASTDDS_TAG}
+  GIT_TAG 2.11.3
   CMAKE_ARGS
     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
     -DCMAKE_INSTALL_PREFIX=${PROJECT_INSTALL_PATH}

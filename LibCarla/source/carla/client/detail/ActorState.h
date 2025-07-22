@@ -22,6 +22,11 @@ namespace detail {
   class ActorState : private MovableNonCopyable {
   public:
 
+    //Added by me
+    void SetParent(ActorId parent_id) {
+      _description.parent_id = parent_id;
+    }
+
     ActorId GetId() const {
       return _description.id;
     }
@@ -40,6 +45,11 @@ namespace detail {
 
     const std::vector<uint8_t> &GetSemanticTags() const {
       return _description.semantic_tags;
+    }
+
+    void SetSemanticTags(uint8_t tag_num) {
+      _description.semantic_tags.clear();
+      _description.semantic_tags.push_back(tag_num);
     }
 
     SharedPtr<Actor> GetParent() const;

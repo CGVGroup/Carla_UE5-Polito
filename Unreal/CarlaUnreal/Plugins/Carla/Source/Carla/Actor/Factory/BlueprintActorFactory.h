@@ -45,7 +45,7 @@ private:
 	static bool JsonToFBlueprintParametersArray(const FString& JsonString, TArray<FBlueprintParameters>& OutBlueprintParamsArray);
 
 protected:
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FActorDefinition> Definitions;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TArray<FBlueprintParameters> BlueprintsParams;

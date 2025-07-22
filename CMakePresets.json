@@ -1,49 +1,61 @@
 {
-  "version": 4,
-  "cmakeMinimumRequired":
-  {
-    "major": 3,
-    "minor": 27,
-    "patch": 2
-  },
-  "configurePresets":
-  [
-    {
-      "name": "Common",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/Build/${presetName}",
-      "installDir": "${sourceDir}/Install/${presetName}",
-      "cacheVariables":
-      {
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/CMake/Toolchain.cmake"
-      },
-      "hidden": true
+    "version": 4,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 27,
+        "patch": 2
     },
-    {
-      "name": "Development",
-      "inherits": "Common",
-      "cacheVariables":
-      {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "CMAKE_EXPORT_COMPILE_COMMANDS" : true
-      }
-    },
-    {
-      "name": "Release",
-      "inherits": "Common",
-      "cacheVariables":
-      {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
-    },
-    {
-      "name": "Debug",
-      "inherits": "Common",
-      "cacheVariables":
-      {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_EXPORT_COMPILE_COMMANDS" : true
-      }
-    }
-  ]
+    "configurePresets": [
+        {
+            "name": "Common",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/Build/${presetName}",
+            "installDir": "${sourceDir}/Install/${presetName}",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/CMake/Toolchain.cmake",
+                "CMAKE_MAKE_PROGRAM": "/usr/bin/ninja"
+            },
+            "hidden": true
+        },
+        {
+            "name": "Development",
+            "inherits": "Common",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true
+            }
+        },
+        {
+            "name": "Release",
+            "inherits": "Common",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "Debug",
+            "inherits": "Common",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true
+            }
+        },
+        {
+            "name": "TMP",
+            "displayName": "VS_Code",
+            "description": "Sets Ninja generator, build and install directory",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/CMake/Toolchain.cmake",
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+                "Python_ROOT_DIR":"/home/nicholas/Desktop/venv/bin",
+    		"Python3_ROOT_DIR":"/home/nicholas/Desktop/venv/bin",
+    		"LAUNCH_ARGS":"-prefernvidia",
+    		"ENABLE_ROS2":"ON",
+    		"CARLA_UNREAL_ENGINE_PATH":"/home/nicholas/Desktop/UnrealEngine"
+            }
+        }
+    ]
 }

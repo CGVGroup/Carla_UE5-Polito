@@ -12,6 +12,12 @@
 namespace carla {
 namespace client {
 
+  //added by me
+  rpc::Actor Actor::GetParentActor() const {
+    return GetEpisode().Lock()->GetParentActor(this->GetId());
+  }
+  //end
+
   geom::Location Actor::GetLocation() const {
     return GetEpisode().Lock()->GetActorLocation(*this);
   }

@@ -19,4 +19,5 @@ struct CARLA_API FBlueprintParameters
   UPROPERTY(EditAnywhere, BlueprintReadWrite)
   FString Path;
 
+
 };

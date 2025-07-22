@@ -39,6 +39,18 @@ public:
   /// objects having this value active.
   static void TagActor(const AActor &Actor, bool bTagForSemanticSegmentation);
 
+  /*
+  Added by Nicholas Berardo
+  */
+
+  UFUNCTION(BlueprintCallable, Category = "Tagger")
+  static void SetActorTag(AActor *Actor, const FString &Tag);
+  static void SetSemanticTag(UPrimitiveComponent &Component, const crp::CityObjectLabel &Label);
+
+  /*
+  END Code added by Nicholas Berardo
+  */
+
 
   /// Set the tag of every actor in level.
   ///

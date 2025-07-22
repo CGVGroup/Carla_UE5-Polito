@@ -76,6 +76,10 @@ namespace detail {
 
     ~Client();
 
+    bool SetActorSemanticTag(rpc::ActorId id,const std::string &tag) const;
+
+    rpc::Actor GetParentActor(rpc::ActorId id);
+
     /// Querry to know if a Traffic Manager is running on port
     bool IsTrafficManagerRunning(uint16_t port) const;
 

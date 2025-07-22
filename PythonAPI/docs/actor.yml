@@ -98,6 +98,19 @@
       warning: >
         This method blocks the script until the destruction is completed by the simulator.
     # --------------------------------------
+    - def_name: set_actor_semantic_tag
+      params:
+      - param_name: tag
+        type: string
+        doc: >
+          The semantic tag to be set for this actor.
+      - param_name: actor
+        type: carla.Actor
+        doc: >
+          The actor to set the semantic tag for.
+      doc: >
+        Sets the semantic tag for this actor. This is used by the semantic segmentation sensor to identify the actor in the scene. 
+    # --------------------------------------
     - def_name: disable_constant_velocity
       doc: >
         Disables any constant velocity previously set for a carla.Vehicle actor.  

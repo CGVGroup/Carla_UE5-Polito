@@ -51,7 +51,6 @@ public:
 
   virtual ~FCarlaActor() {};
 
-
   bool IsInValid() const
   {
     return (carla::rpc::ActorState::Invalid == State);
@@ -146,7 +145,17 @@ public:
   carla::rpc::AttachmentType GetAttachmentType() const
   {
     return Attachment;
-  }
+  } 
+
+  /*
+  Code added by Nicholas Berardo
+  */
+
+  void SetSemanticTag(const FString& NewTag);
+
+  /*
+  END Code added by Nicholas Berardo
+  */
 
   void BuildActorData();
 

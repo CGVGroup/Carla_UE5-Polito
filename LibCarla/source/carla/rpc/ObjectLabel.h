@@ -46,7 +46,10 @@ namespace rpc {
     RailTrack    =   27u,
     GuardRail    =   28u,
     Rock         =   29u,
-
+    // added by me
+    Static_Anomaly	  =	30u,
+    Dynamic_Anomaly 	=	31u,
+    Animal     =   32u,
     Any          =  0xFF
   };
 

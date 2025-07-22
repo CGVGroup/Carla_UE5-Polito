@@ -57,6 +57,9 @@ crp::CityObjectLabel ATagger::GetLabelByFolderName(const FString &String) {
   else if (String == "Rock")         return crp::CityObjectLabel::Rock;
   else if (String == "Stone")        return crp::CityObjectLabel::Rock;
   else if (String == "Bush")         return crp::CityObjectLabel::Vegetation;
+  else if (String == "Static_Anomaly")	     return crp::CityObjectLabel::Static_Anomaly;
+  else if (String == "Dynamic_Anomaly")      return crp::CityObjectLabel::Dynamic_Anomaly;
+  else if (String == "Animal")      return crp::CityObjectLabel::Animal;
   else                               return crp::CityObjectLabel::None;
 }
 
@@ -168,7 +171,6 @@ void ATagger::TagActorsInLevel(UWorld &World, bool bTagForSemanticSegmentation)
   }
 }
 
-
 void ATagger::TagActorsInLevel(ULevel &Level, bool bTagForSemanticSegmentation)
 {
   for (AActor * Actor : Level.Actors) {
@@ -218,6 +220,12 @@ crp::CityObjectLabel ATagger::GetTagFromString(FString Tag)
   if(Tag.Contains("RailTrack")) return crp::CityObjectLabel::RailTrack;
   if(Tag.Contains("GuardRail")) return crp::CityObjectLabel::GuardRail;
   if(Tag.Contains("TrafficLight")) return crp::CityObjectLabel::TrafficLight;
+
+  //Anomlies
+  if(Tag.Contains("Static_Anomaly")) return crp::CityObjectLabel::Static_Anomaly;
+  if(Tag.Contains("Dynamic_Anomaly")) return crp::CityObjectLabel::Dynamic_Anomaly;
+  if(Tag.Contains("Animal")) return crp::CityObjectLabel::Animal;
+
   if(Tag.Contains("Static")) return crp::CityObjectLabel::Static;
   if(Tag.Contains("Dynamic")) return crp::CityObjectLabel::Dynamic;
   if(Tag.Contains("Water")) return crp::CityObjectLabel::Water;
@@ -267,10 +275,52 @@ FString ATagger::GetTagAsString(const crp::CityObjectLabel Label)
     CARLA_GET_LABEL_STR(Train)
     CARLA_GET_LABEL_STR(Rider)
     CARLA_GET_LABEL_STR(Rock)
+    CARLA_GET_LABEL_STR(Static_Anomaly)
+    CARLA_GET_LABEL_STR(Dynamic_Anomaly)
+    CARLA_GET_LABEL_STR(Animal)
 
 #undef CARLA_GET_LABEL_STR
   }
 }
+
+/*
+START Code added by Nicholas Berardo
+*/
+
+void ATagger::SetActorTag(
+  AActor *Actor,
+  const FString& Tag)
+{
+  UE_LOG(LogCarla, Warning, TEXT("SetActorTag called on actor: %s (%s)"), *Actor->GetName(), *Actor->GetClass()->GetName());
+  // The components are the components defined in UE
+  TArray<UStaticMeshComponent*> StaticMeshComponents;
+  Actor->GetComponents<UStaticMeshComponent>(StaticMeshComponents);
+  for (UStaticMeshComponent* Component : StaticMeshComponents) {
+    auto Label = GetTagFromString(Tag);
+    SetSemanticTag(*Component, Label);
+  }
+  // Iterate skeletal meshes.
+  TArray<USkeletalMeshComponent *> SkeletalMeshComponents;
+  Actor->GetComponents<USkeletalMeshComponent>(SkeletalMeshComponents);
+  UE_LOG(LogCarla, Warning, TEXT("Num SkeletalMeshComponents: %d"), SkeletalMeshComponents.Num());
+  for (USkeletalMeshComponent* Component : SkeletalMeshComponents) {
+    auto Label = GetTagFromString(Tag);
+    SetSemanticTag(*Component, Label); 
+  }
+}
+
+void ATagger::SetSemanticTag(UPrimitiveComponent& Component, const crp::CityObjectLabel& Label)
+{
+  // Set the stencil value and tag
+  UE_LOG(LogCarla, Warning, TEXT("Setting semantic tag %s for component %s"), *GetTagAsString(Label), *Component.GetName());
+  SetStencilValue(Component, Component.GetOwner()->GetUniqueID(), Label, true);
+  Component.ComponentTags.Empty();
+  Component.ComponentTags.Add(FName(*GetTagAsString(Label)));
+}
+
+/*
+END Code added by Nicholas Berardo
+*/
 
 // =============================================================================
 // -- non-static ATagger functions ---------------------------------------------

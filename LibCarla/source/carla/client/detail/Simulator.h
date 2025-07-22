@@ -802,6 +802,16 @@ namespace detail {
 
     /// @}
 
+    //Added by Nicholas Berardo
+    bool SetActorSemanticTag(rpc::ActorId id,const std::string &tag) const {
+      return _client.SetActorSemanticTag(id, tag);
+    }
+
+    rpc::Actor GetParentActor(rpc::ActorId id) {
+      return _client.GetParentActor(id);
+    }
+    //end
+
   private:
 
     bool ShouldUpdateMap(rpc::MapInfo& map_info);

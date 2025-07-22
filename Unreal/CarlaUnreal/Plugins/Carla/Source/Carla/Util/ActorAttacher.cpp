@@ -97,8 +97,13 @@ void UActorAttacher::AttachActors(
     AActor *Parent,
     const EAttachmentType AttachmentType)
 {
+  
   check(Child != nullptr);
   check(Parent != nullptr);
+
+  //Added by me
+  UE_LOG(LogCarla, Warning, TEXT("Attaching %s to %s"),*Child->GetName(), *Parent->GetName());
+  //End of added by me
 
   switch (AttachmentType)
   {

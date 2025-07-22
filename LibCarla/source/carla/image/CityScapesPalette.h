@@ -18,7 +18,7 @@ namespace detail {
 #endif
     // Please update documentation if you change this.
     uint8_t CITYSCAPES_PALETTE_MAP[][3u] = {
-        {  0u,   0u,   0u},   // unlabeled     =   0u
+        {0u,   0u,   0u},   // unlabeled     =   0u
         // cityscape
         {128u,  64u, 128u},   // road          =   1u
         {244u,  35u, 232u},   // sidewalk      =   2u
@@ -50,6 +50,10 @@ namespace detail {
         {230u, 150u, 140u},   // rail track    =  27u
         {180u, 165u, 180u},   // guard rail    =  28u
         {180u, 130u,  70u},   // rock          =  29u
+        //anomalies
+        {193u,  71u,  71u},   // Static_Anomaly		= 30u
+        {138u,  17u,  17u},	    // Dynamic_Anomaly  = 31u
+        {175u, 83u, 83u},   // Animal      = 32u
       };
 
 } // namespace detail

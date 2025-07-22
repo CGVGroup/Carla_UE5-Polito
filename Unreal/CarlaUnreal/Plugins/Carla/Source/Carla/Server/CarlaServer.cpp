@@ -249,6 +249,48 @@ void FCarlaServer::FPimpl::BindActions()
   namespace cr = carla::rpc;
   namespace cg = carla::geom;
 
+  /*
+  Code added by Nicholas Berardo
+  */
+  //Function to set the semantic tag of an actor
+  BIND_SYNC(set_actor_semantic_tag) << [this] (carla::ActorId id, const std::string &tag) -> R<bool>
+  {
+    UE_LOG(LogCarla, Warning, TEXT("set_actor_semantic_tag called with id: %d, tag: %s"), id, *cr::ToFString(tag));
+    //FindCarlaActor return a *FCarlaActor
+    auto actor = Episode->FindCarlaActor(id);
+    if (actor){
+      FString Tag = cr::ToFString(tag);
+      actor->SetSemanticTag(Tag);
+      return true;
+    }
+    return false;
+  };
+
+
+  BIND_SYNC(get_parent) << [this] (carla::ActorId id) -> R<carla::rpc::ActorId>
+  {
+    UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d"), id);
+    //FindCarlaActor return a *FCarlaActor
+    FCarlaActor* actor = Episode->FindCarlaActor(id);
+    if (actor){
+      UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d, actor: %s"), id, *actor->GetActor()->GetName());
+      auto parent = actor->GetParent();
+      if (parent) {
+        FCarlaActor* parent_actor = Episode->FindCarlaActor(parent);
+        UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d, parent: %s"), id, *parent_actor->GetActor()->GetName());
+        return parent;
+      }else{
+        UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d, parent not found"), id);
+      }
+    }else{
+      UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d, actor not found"), id);
+    }
+    return 0u;
+  };
+  /*
+  END Code added by Nicholas Berardo
+  */
+
   /// Looks for a Traffic Manager running on port
   BIND_SYNC(is_traffic_manager_running) << [this] (uint16_t port) ->R<bool>
   {
