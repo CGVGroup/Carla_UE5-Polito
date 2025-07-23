@@ -137,6 +137,8 @@ void ATagger::TagActor(const AActor &Actor, bool bTagForSemanticSegmentation)
 
     SetStencilValue(*Component, Actor.GetUniqueID(), Label, bTagForSemanticSegmentation);
     Component->ComponentTags.Add(FName(*GetTagAsString(Label)));
+    UE_LOG(LogCarla, Log, TEXT("StaticMeshComponent: %s"), *Component->GetName());
+    UE_LOG(LogCarla, Log, TEXT("    - Label: \"%s\""), *GetTagAsString(Label));
     #ifdef CARLA_TAGGER_EXTRA_LOG
         UE_LOG(LogCarla, Log, TEXT("  + StaticMeshComponent: %s"), *Component->GetName());
         UE_LOG(LogCarla, Log, TEXT("    - Label: \"%s\""), *GetTagAsString(Label));
@@ -156,6 +158,8 @@ void ATagger::TagActor(const AActor &Actor, bool bTagForSemanticSegmentation)
 
     SetStencilValue(*Component, Actor.GetUniqueID(), Label, bTagForSemanticSegmentation);
     Component->ComponentTags.Add(FName(*GetTagAsString(Label)));
+    UE_LOG(LogCarla, Log, TEXT("SkeletalMeshComponent: %s"), *Component->GetName());
+        UE_LOG(LogCarla, Log, TEXT("    - Label: \"%s\""), *GetTagAsString(Label));
     #ifdef CARLA_TAGGER_EXTRA_LOG
         UE_LOG(LogCarla, Log, TEXT("  + SkeletalMeshComponent: %s"), *Component->GetName());
         UE_LOG(LogCarla, Log, TEXT("    - Label: \"%s\""), *GetTagAsString(Label));

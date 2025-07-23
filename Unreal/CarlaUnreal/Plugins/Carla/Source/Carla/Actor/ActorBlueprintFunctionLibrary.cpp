@@ -1492,13 +1492,8 @@ void UActorBlueprintFunctionLibrary::MakePropDefinition(
   FillIdAndTags(Definition, TEXT("static"), TEXT("prop"), Parameters.Name);
   AddRecommendedValuesForActorRoleName(Definition, {TEXT("prop")});
 
-<<<<<<< HEAD
-
-  auto GetSize = [](EPropSize Value) {
-=======
   auto GetSize = [](EPropSize Value)
   {
->>>>>>> 5f439b9689ee01d88ead72a34b9c4b6edab4ed52
     switch (Value)
     {
     case EPropSize::Tiny:

@@ -837,7 +837,7 @@ void FCarlaServer::FPimpl::BindActions()
       RESPOND_ERROR("unable to attach actor: parent actor not found");
     }
 
-   f CarlaActor->SetParent(ParentId);
+    CarlaActor->SetParent(ParentId);
     CarlaActor->SetAttachmentType(InAttachmentType);
     ParentCarlaActor->AddChildren(CarlaActor->GetActorId());
 
