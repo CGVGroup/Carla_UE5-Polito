@@ -16,6 +16,10 @@ namespace client {
   rpc::Actor Actor::GetParentActor() const {
     return GetEpisode().Lock()->GetParentActor(this->GetId());
   }
+
+  bool Actor::RetagActor() const {
+    return GetEpisode().Lock()->RetagActor(*this);
+  }
   //end
 
   geom::Location Actor::GetLocation() const {

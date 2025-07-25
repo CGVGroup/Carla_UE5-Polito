@@ -810,6 +810,10 @@ namespace detail {
     rpc::Actor GetParentActor(rpc::ActorId id) {
       return _client.GetParentActor(id);
     }
+
+    bool RetagActor(const Actor &actor){
+      return _client.RetagActor(actor.GetId());
+    }
     //end
 
   private:

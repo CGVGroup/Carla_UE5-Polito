@@ -113,9 +113,14 @@ namespace detail {
       const std::string &tag) const {
     return _pimpl->CallAndWait<bool>("set_actor_semantic_tag", id, tag);
   }
-
+  //Added by me
   rpc::Actor Client::GetParentActor(rpc::ActorId id) {
     return _pimpl->CallAndWait<rpc::Actor>("get_parent", id);
+  }
+
+  //Added by me
+  bool Client::RetagActor(rpc::ActorId id) {
+    return _pimpl->CallAndWait<bool>("retag_actor", id);
   }
 
   bool Client::IsTrafficManagerRunning(uint16_t port) const {

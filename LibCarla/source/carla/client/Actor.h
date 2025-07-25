@@ -32,6 +32,8 @@ namespace client {
 
     rpc::Actor GetParentActor() const;
 
+    bool RetagActor() const;
+
     /// Return the current location of the actor.
     ///
     /// @note This function does not call the simulator, it returns the location

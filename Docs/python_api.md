@@ -142,6 +142,12 @@ Teleports the actor to a given transform (location and rotation).
     - **Parameters:**
         - `transform` (_[carla.Transform](#carla.Transform)_)  
     - **Getter:** _[carla.Actor.get_transform](#carla.Actor.get_transform)_  
+- <a name="carla.Actor.set_actor_semantic_tag"></a>**<font color="#7fb800">set_actor_semantic_tag</font>**(<font color="#00a6ed">**self**</font>, <font color="#00a6ed">**tag**</font>)  
+Change the actor semantic tag.  
+    - **Parameters:**
+        - `tag` (_[uint8]()_)
+- <a name="carla.Actor.retag_actor"></a>**<font color="#7fb800">retag_actor</font>**(<font color="#00a6ed">**self**</font>
+Retag the actor with the original tags.
 
 ##### Dunder methods
 - <a name="carla.Actor.__str__"></a>**<font color="#7fb800">\__str__</font>**(<font color="#00a6ed">**self**</font>)  

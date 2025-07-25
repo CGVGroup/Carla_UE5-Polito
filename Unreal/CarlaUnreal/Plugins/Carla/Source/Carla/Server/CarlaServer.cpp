@@ -287,6 +287,23 @@ void FCarlaServer::FPimpl::BindActions()
     }
     return 0u;
   };*/
+
+
+  BIND_SYNC(retag_actor) << [this] (carla::ActorId id) -> R<bool>
+  {
+    UE_LOG(LogCarla, Warning, TEXT("retag_actor called with id: %d"), id);
+    //FindCarlaActor return a *FCarlaActor
+    FCarlaActor* actor = Episode->FindCarlaActor(id);
+    if (actor){
+      UE_LOG(LogCarla, Warning, TEXT("retag_actor called with id: %d, actor: %s"), id, *actor->GetActor()->GetName());
+      ATagger::TagActor(*actor->GetActor(),true);
+      return true;
+    }else{
+      UE_LOG(LogCarla, Warning, TEXT("retag_actor called with id: %d, actor not found"), id);
+    }
+    return false;
+  };
+
   /*
   END Code added by Nicholas Berardo
   */

@@ -80,6 +80,8 @@ namespace detail {
 
     rpc::Actor GetParentActor(rpc::ActorId id);
 
+    bool RetagActor(rpc::ActorId id);
+
     /// Querry to know if a Traffic Manager is running on port
     bool IsTrafficManagerRunning(uint16_t port) const;
 
