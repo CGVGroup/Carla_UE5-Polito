@@ -26,3 +26,9 @@ Config/CarSimConfig.ini
 *.sln
 CMakeLists.txt
 Makefile
+
+!/Content/Carla/
+!/Content/Carla/Blueprints/
+!/Content/Carla/Blueprints/Props/
+!/Content/Carla/Blueprints/Props/**
+

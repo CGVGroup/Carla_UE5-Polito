@@ -10,7 +10,7 @@ Doxygen/
 Dist/
 Temp/
 out/
-Unreal/CarlaUnreal/Content/
+Unreal/CarlaUnreal/Content/** 
 Unreal/CarlaUnreal/Intermediate/
 Unreal/CarlaUnreal/Saved/
 CMakeFiles/
@@ -20,7 +20,6 @@ CMakeSettings.json
 .clangd
 
 Help.md
-
 
 !Unreal/CarlaUnreal/Content/Carla/
 !Unreal/CarlaUnreal/Content/Carla/Blueprints/
