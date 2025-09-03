@@ -10,9 +10,9 @@ Doxygen/
 Dist/
 Temp/
 out/
-Unreal/CarlaUnreal/Content
-Unreal/CarlaUnreal/Intermediate
-Unreal/CarlaUnreal/Saved
+Unreal/CarlaUnreal/Content/
+Unreal/CarlaUnreal/Intermediate/
+Unreal/CarlaUnreal/Saved/
 CMakeFiles/
 
 CMakeSettings.json
