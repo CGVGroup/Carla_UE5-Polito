@@ -22,4 +22,7 @@ CMakeSettings.json
 Help.md
 
 
-!/Unreal/CarlaUnreal/Content/Carla/Blueprints/Props/**
+!Unreal/CarlaUnreal/Content/Carla/
+!Unreal/CarlaUnreal/Content/Carla/Blueprints/
+!Unreal/CarlaUnreal/Content/Carla/Blueprints/Props/
+!Unreal/CarlaUnreal/Content/Carla/Blueprints/Props/**
