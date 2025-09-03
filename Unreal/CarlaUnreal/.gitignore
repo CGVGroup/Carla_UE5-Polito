@@ -13,7 +13,9 @@ Plugins/Carla/DerivedDataCache
 Plugins/Carla/Intermediate
 Plugins/Carla/Saved
 
-/Content
+/Content/** 
+!/Content/Carla/Blueprints/Props/**
+
 Config/CarlaSettings.ini
 Config/DefaultEditor.ini
 Config/CarSimConfig.ini
@@ -27,8 +29,4 @@ Config/CarSimConfig.ini
 CMakeLists.txt
 Makefile
 
-!/Content/Carla/
-!/Content/Carla/Blueprints/
-!/Content/Carla/Blueprints/Props/
-!/Content/Carla/Blueprints/Props/**
 
