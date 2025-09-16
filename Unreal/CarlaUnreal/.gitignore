@@ -13,10 +13,19 @@ Plugins/Carla/DerivedDataCache
 Plugins/Carla/Intermediate
 Plugins/Carla/Saved
 
-/Content/** 
+# Ignore everything in Content
+/Content/**
+
+# Unignore parent folders
 !/Content/Carla/
 !/Content/Carla/Blueprints/
 !/Content/Carla/Blueprints/Props/
+!/Content/Carla/Blueprints/Props/**
+
+# Optional: ignore everything else in Blueprints
+/Content/Carla/Blueprints/*
+
+# Make sure Props is still included
 !/Content/Carla/Blueprints/Props/**
 
 Config/CarlaSettings.ini

@@ -31,6 +31,16 @@ class CARLA_API ATagger : public AActor
 
 public:
 
+  /// Set the tag of every actor in level.
+  ///
+  /// If bTagForSemanticSegmentation true, activate the custom depth pass. This
+  /// pass is necessary for rendering the semantic segmentation. However, it may
+  /// add a performance penalty since occlusion doesn't seem to be applied to
+  /// objects having this value active.
+  static void TagActorsInLevel(UWorld &World, bool bTagForSemanticSegmentation);
+
+  static void TagActorsInLevel(ULevel &Level, bool bTagForSemanticSegmentation);
+
   /// Set the tag of an actor.
   ///
   /// If bTagForSemanticSegmentation true, activate the custom depth pass. This
@@ -46,21 +56,12 @@ public:
   UFUNCTION(BlueprintCallable, Category = "Tagger")
   static void SetActorTag(AActor *Actor, const FString &Tag);
   static void SetSemanticTag(UPrimitiveComponent &Component, const crp::CityObjectLabel &Label);
+  UFUNCTION(BlueprintCallable, Category = "Tagger")
+  static void RetagActor(AActor *Actor);
 
   /*
   END Code added by Nicholas Berardo
   */
-
-
-  /// Set the tag of every actor in level.
-  ///
-  /// If bTagForSemanticSegmentation true, activate the custom depth pass. This
-  /// pass is necessary for rendering the semantic segmentation. However, it may
-  /// add a performance penalty since occlusion doesn't seem to be applied to
-  /// objects having this value active.
-  static void TagActorsInLevel(UWorld &World, bool bTagForSemanticSegmentation);
-
-  static void TagActorsInLevel(ULevel &Level, bool bTagForSemanticSegmentation);
 
   /// Retrieve the tag of an already tagged component.
   static crp::CityObjectLabel GetTagOfTaggedComponent(const UPrimitiveComponent &Component);

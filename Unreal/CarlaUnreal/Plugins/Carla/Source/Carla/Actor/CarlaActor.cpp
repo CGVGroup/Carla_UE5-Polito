@@ -50,6 +50,16 @@
     ATagger::SetActorTag(TheActor, NewTag);
   }
 
+  void FCarlaActor::RetagActor()
+  {
+    if (TheActor == nullptr)
+    {
+      UE_LOG(LogCarla, Warning, TEXT("Cannot retag actor %d because"), GetActorId());
+      return;
+    }
+    ATagger::RetagActor(TheActor);
+  }
+
   /*
   END Code added by Nicholas Berardo
   */

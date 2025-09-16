@@ -13,8 +13,10 @@ namespace carla {
 namespace client {
 
   //added by me
-  rpc::Actor Actor::GetParentActor() const {
-    return GetEpisode().Lock()->GetParentActor(this->GetId());
+  SharedPtr<Actor> Actor::GetParentActor() const {
+    auto simulator = GetEpisode().Lock();
+    auto actor = simulator->GetParentActor(this->GetId());
+    return simulator->MakeActor(actor, GarbageCollectionPolicy::Disabled);
   }
 
   bool Actor::RetagActor() const {

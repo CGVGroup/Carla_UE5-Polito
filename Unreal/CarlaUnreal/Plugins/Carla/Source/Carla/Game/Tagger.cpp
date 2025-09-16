@@ -289,6 +289,50 @@ FString ATagger::GetTagAsString(const crp::CityObjectLabel Label)
 START Code added by Nicholas Berardo
 */
 
+void ATagger::RetagActor(AActor *Actor)
+{
+  // Iterate static meshes.
+  TArray<UStaticMeshComponent *> StaticMeshComponents;
+  Actor->GetComponents<UStaticMeshComponent>(StaticMeshComponents);
+
+  for (UStaticMeshComponent *Component : StaticMeshComponents) 
+  {
+    auto Label = GetLabelByPath(Component->GetStaticMesh());
+    if (Label == crp::CityObjectLabel::Pedestrians && Cast<ACarlaWheeledVehicle>(Actor))
+    {
+      Label = crp::CityObjectLabel::Rider;
+    }
+    UE_LOG(LogCarla, Warning, TEXT("Actor: %s"), *Actor->GetName());
+    UE_LOG(LogCarla, Warning, TEXT("  + StaticMeshComponent: %s"), *Component->GetName());
+    UE_LOG(LogCarla, Warning, TEXT("    - Label: \"%s\""), *GetTagAsString(Label));
+    SetStencilValue(*Component, Actor->GetUniqueID(), Label, true);
+    Component->ComponentTags.Add(FName(*GetTagAsString(Label)));
+    #ifdef CARLA_TAGGER_EXTRA_LOG
+        UE_LOG(LogCarla, Log, TEXT("  + StaticMeshComponent: %s"), *Component->GetName());
+        UE_LOG(LogCarla, Log, TEXT("    - Label: \"%s\""), *GetTagAsString(Label));
+    #endif // CARLA_TAGGER_EXTRA_LOG
+  }
+  
+  // Iterate skeletal meshes.
+  TArray<USkeletalMeshComponent *> SkeletalMeshComponents;
+  Actor->GetComponents<USkeletalMeshComponent>(SkeletalMeshComponents);
+
+  for (USkeletalMeshComponent *Component : SkeletalMeshComponents) {
+    auto Label = GetLabelByPath(Component->GetPhysicsAsset());
+    if (Label == crp::CityObjectLabel::Pedestrians && Cast<ACarlaWheeledVehicle>(Actor))
+    {
+      Label = crp::CityObjectLabel::Rider;
+    }
+
+    SetStencilValue(*Component, Actor->GetUniqueID(), Label, true);
+    Component->ComponentTags.Add(FName(*GetTagAsString(Label)));
+    #ifdef CARLA_TAGGER_EXTRA_LOG
+        UE_LOG(LogCarla, Log, TEXT("  + SkeletalMeshComponent: %s"), *Component->GetName());
+        UE_LOG(LogCarla, Log, TEXT("    - Label: \"%s\""), *GetTagAsString(Label));
+    #endif // CARLA_TAGGER_EXTRA_LOG
+  }
+}
+
 void ATagger::SetActorTag(
   AActor *Actor,
   const FString& Tag)

@@ -152,6 +152,7 @@ public:
   */
 
   void SetSemanticTag(const FString& NewTag);
+  void RetagActor();
 
   /*
   END Code added by Nicholas Berardo

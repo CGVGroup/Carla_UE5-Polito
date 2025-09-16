@@ -147,7 +147,7 @@ void export_actor() {
       .add_property("bounding_box", CALL_RETURNING_COPY(cc::Actor, GetBoundingBox))
       .def("get_world", CALL_RETURNING_COPY(cc::Actor, GetWorld))
       //Added by me
-      .def("get_parent", &cc::Actor::GetParentActor)
+      .def("get_parent", CALL_WITHOUT_GIL(cc::Actor, GetParentActor))
       //Added by me
       .def("retag_actor", &cc::Actor::RetagActor)
       

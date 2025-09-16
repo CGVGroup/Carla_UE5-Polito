@@ -30,7 +30,7 @@ namespace client {
 
     virtual ~Actor() = default;
 
-    rpc::Actor GetParentActor() const;
+    SharedPtr<Actor> GetParentActor() const;
 
     bool RetagActor() const;
 

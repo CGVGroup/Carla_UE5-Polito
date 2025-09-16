@@ -267,26 +267,25 @@ void FCarlaServer::FPimpl::BindActions()
   };
 
 
-  /**BIND_SYNC(get_parent) << [this] (carla::ActorId id) -> R<carla::rpc::ActorId>
+  BIND_SYNC(get_parent) << [this] (carla::ActorId id) -> R<cr::Actor>
   {
-    UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d"), id);
     //FindCarlaActor return a *FCarlaActor
     FCarlaActor* actor = Episode->FindCarlaActor(id);
+    FCarlaActor* parent_actor = nullptr;
     if (actor){
-      UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d, actor: %s"), id, *actor->GetActor()->GetName());
-      auto parent = actor->GetParent();
-      if (parent) {
-        FCarlaActor* parent_actor = Episode->FindCarlaActor(parent);
-        UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d, parent: %s"), id, *parent_actor->GetActor()->GetName());
-        return parent;
+      auto actor_ue = actor->GetActor();
+      auto parent_ue = actor_ue->GetOwner();
+      if (parent_ue){
+        //UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d, actor has parent name: %s"), id, *parent_ue->GetName());
+        return Episode->SerializeActor(parent_ue);
       }else{
-        UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d, parent not found"), id);
+        //UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d, parent not found"), id);
       }
     }else{
-      UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d, actor not found"), id);
+      //UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d, actor not found"), id);
     }
-    return 0u;
-  };*/
+    return Episode->SerializeActor(parent_actor);
+  };
 
 
   BIND_SYNC(retag_actor) << [this] (carla::ActorId id) -> R<bool>
@@ -296,7 +295,7 @@ void FCarlaServer::FPimpl::BindActions()
     FCarlaActor* actor = Episode->FindCarlaActor(id);
     if (actor){
       UE_LOG(LogCarla, Warning, TEXT("retag_actor called with id: %d, actor: %s"), id, *actor->GetActor()->GetName());
-      ATagger::TagActor(*actor->GetActor(),true);
+      actor->RetagActor();
       return true;
     }else{
       UE_LOG(LogCarla, Warning, TEXT("retag_actor called with id: %d, actor not found"), id);
