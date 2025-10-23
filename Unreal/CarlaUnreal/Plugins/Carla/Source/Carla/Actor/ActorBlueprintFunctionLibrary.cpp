@@ -1895,7 +1895,7 @@ void UActorBlueprintFunctionLibrary::SetCamera(
     Camera->SetChromAberrOffset(
         RetrieveActorAttributeToFloat("chromatic_aberration_offset", Description.Variations, 0.0f));
 
-    auto ColorSaturation = FLinearColor(RetrieveActorAttributeToColor("color_saturation", Description.Variations, FLinearColor(0.696528f, 0.802778f, 0.850000f, 1.000000f).ToFColorSRGB()));
+    auto ColorSaturation = FLinearColor(RetrieveActorAttributeToColor("color_saturation", Description.Variations, FLinearColor(0.5f, 0.5f, 0.5f, 1.000000f).ToFColorSRGB()));
     Camera->SetColorSaturation(
         FVector4(ColorSaturation.R, ColorSaturation.G, ColorSaturation.B, ColorSaturation.A));
 
@@ -1908,7 +1908,7 @@ void UActorBlueprintFunctionLibrary::SetCamera(
         FVector4(ColorSaturationHigh.R, ColorSaturationHigh.G, ColorSaturationHigh.B, 1.0f));
 
     // Temporal comments until FVector is implemented in clientside
-    auto ColorContrast = FLinearColor(RetrieveActorAttributeToColor("color_contrast", Description.Variations, FLinearColor(0.9f, 0.9f, 0.9f).ToFColorSRGB()));
+    auto ColorContrast = FLinearColor(RetrieveActorAttributeToColor("color_contrast", Description.Variations, FLinearColor(1.6f, 1.6f, 1.6f).ToFColorSRGB()));
     Camera->SetColorContrast(
         FVector4(ColorContrast.R, ColorContrast.G, ColorContrast.B, 1.0f));
 
@@ -1939,7 +1939,7 @@ void UActorBlueprintFunctionLibrary::SetCamera(
         RetrieveActorAttributeToFloat("ambient_occlusion_radius", Description.Variations, 40.0f));
 
     // Temporal comments until FVector is implemented in clientside
-    auto ColorGamma = FLinearColor(RetrieveActorAttributeToColor("color_gamma", Description.Variations, FLinearColor(1.1f, 1.1f, 1.1f).ToFColorSRGB()));
+    auto ColorGamma = FLinearColor(RetrieveActorAttributeToColor("color_gamma", Description.Variations, FLinearColor(1.2f, 1.2f, 1.2f).ToFColorSRGB()));
     Camera->SetColorGamma(
         FVector4(ColorGamma.R, ColorGamma.G, ColorGamma.B, 1.0f));
 

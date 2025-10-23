@@ -52,8 +52,12 @@ namespace detail {
         {180u, 130u,  70u},   // rock          =  29u
         //anomalies
         {193u,  71u,  71u},   // Static_Anomaly		= 30u
-        {138u,  17u,  17u},	    // Dynamic_Anomaly  = 31u
-        {175u, 83u, 83u},   // Animal      = 32u
+        {138u,  17u,  17u},	  // Dynamic_Anomaly  = 31u
+        {175u, 83u, 83u},     // Animal      = 32u
+        {232u, 188u, 188u}, // Tiny anomaly = 33u
+        {229u, 137u, 137u},   // Small anomaly = 34u
+        {189u, 47u, 47u},   // Medium anomaly = 35u
+        {131u, 7u, 7u},     // Large anomaly = 36u
       };
 
 } // namespace detail

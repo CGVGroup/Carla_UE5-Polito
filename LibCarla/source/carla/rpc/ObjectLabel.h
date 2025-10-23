@@ -50,6 +50,10 @@ namespace rpc {
     Static_Anomaly	  =	30u,
     Dynamic_Anomaly 	=	31u,
     Animal     =   32u,
+    Tiny_Anomaly = 33u,
+    Small_Anomaly = 34u,
+    Medium_Anomaly = 35u,
+    Large_Anomaly = 36u,
     Any          =  0xFF
   };
 

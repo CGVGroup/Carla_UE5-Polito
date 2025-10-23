@@ -60,6 +60,10 @@ crp::CityObjectLabel ATagger::GetLabelByFolderName(const FString &String) {
   else if (String == "Static_Anomaly")	     return crp::CityObjectLabel::Static_Anomaly;
   else if (String == "Dynamic_Anomaly")      return crp::CityObjectLabel::Dynamic_Anomaly;
   else if (String == "Animal")      return crp::CityObjectLabel::Animal;
+  else if (String == "Tiny_Anomaly")      return crp::CityObjectLabel::Tiny_Anomaly;
+  else if (String == "Small_Anomaly")      return crp::CityObjectLabel::Small_Anomaly;
+  else if (String == "Medium_Anomaly")      return crp::CityObjectLabel::Medium_Anomaly;
+  else if (String == "Large_Anomaly")      return crp::CityObjectLabel::Large_Anomaly;
   else                               return crp::CityObjectLabel::None;
 }
 
@@ -182,6 +186,10 @@ void ATagger::TagActorsInLevel(ULevel &Level, bool bTagForSemanticSegmentation)
 
 crp::CityObjectLabel ATagger::GetTagOfTaggedComponent(const UPrimitiveComponent &Component)
 {
+  UE_LOG(LogCarla, Warning, TEXT("Getting tag for component %s. Number of tags: %d"), *Component.GetName(), Component.ComponentTags.Num());
+  for (int i = 0; i < Component.ComponentTags.Num(); i++){
+    UE_LOG(LogCarla, Warning, TEXT("Component Tag %d: %s"), i, *Component.ComponentTags[i].ToString());
+  }
   if (Component.ComponentTags.Num() > 0) {
     return GetTagFromString(Component.ComponentTags[0].ToString());
   }
@@ -227,6 +235,10 @@ crp::CityObjectLabel ATagger::GetTagFromString(FString Tag)
   if(Tag.Contains("Static_Anomaly")) return crp::CityObjectLabel::Static_Anomaly;
   if(Tag.Contains("Dynamic_Anomaly")) return crp::CityObjectLabel::Dynamic_Anomaly;
   if(Tag.Contains("Animal")) return crp::CityObjectLabel::Animal;
+  if(Tag.Contains("Tiny_Anomaly")) return crp::CityObjectLabel::Tiny_Anomaly;
+  if(Tag.Contains("Small_Anomaly")) return crp::CityObjectLabel::Small_Anomaly;
+  if(Tag.Contains("Medium_Anomaly")) return crp::CityObjectLabel::Medium_Anomaly;
+  if(Tag.Contains("Large_Anomaly")) return crp::CityObjectLabel::Large_Anomaly;
 
   if(Tag.Contains("Static")) return crp::CityObjectLabel::Static;
   if(Tag.Contains("Dynamic")) return crp::CityObjectLabel::Dynamic;
@@ -280,6 +292,10 @@ FString ATagger::GetTagAsString(const crp::CityObjectLabel Label)
     CARLA_GET_LABEL_STR(Static_Anomaly)
     CARLA_GET_LABEL_STR(Dynamic_Anomaly)
     CARLA_GET_LABEL_STR(Animal)
+    CARLA_GET_LABEL_STR(Tiny_Anomaly)
+    CARLA_GET_LABEL_STR(Small_Anomaly)
+    CARLA_GET_LABEL_STR(Medium_Anomaly)
+    CARLA_GET_LABEL_STR(Large_Anomaly)
 
 #undef CARLA_GET_LABEL_STR
   }
@@ -341,6 +357,7 @@ void ATagger::SetActorTag(
   // The components are the components defined in UE
   TArray<UStaticMeshComponent*> StaticMeshComponents;
   Actor->GetComponents<UStaticMeshComponent>(StaticMeshComponents);
+  UE_LOG(LogCarla, Warning, TEXT("Num StaticMeshComponents: %d"), StaticMeshComponents.Num());
   for (UStaticMeshComponent* Component : StaticMeshComponents) {
     auto Label = GetTagFromString(Tag);
     SetSemanticTag(*Component, Label);

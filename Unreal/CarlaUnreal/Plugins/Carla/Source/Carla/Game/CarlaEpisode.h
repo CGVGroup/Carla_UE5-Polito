@@ -333,6 +333,8 @@ public:
 
   bool bIsPrimaryServer = true;
 
+  UActorDispatcher* GetActorDispatcher() const { return ActorDispatcher; }
+
 private:
 
   friend class ACarlaGameModeBase;

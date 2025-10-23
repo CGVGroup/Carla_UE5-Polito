@@ -93,7 +93,9 @@ void CollisionStage::Update(const unsigned long index) {
           if ((other_actor_type == ActorType::Vehicle
                && parameters.GetPercentageIgnoreVehicles(ego_actor_id) <= random_device.next())
               || (other_actor_type == ActorType::Pedestrian
-                  && parameters.GetPercentageIgnoreWalkers(ego_actor_id) <= random_device.next())) {
+                  && parameters.GetPercentageIgnoreWalkers(ego_actor_id) <= random_device.next())
+                || (other_actor_type == ActorType::Static_Anomaly
+                  && parameters.GetPercentageRunningSign(ego_actor_id) <= random_device.next())) {
             collision_hazard = true;
             obstacle_id = other_actor_id;
             available_distance_margin = negotiation_result.second;

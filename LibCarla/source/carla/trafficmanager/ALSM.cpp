@@ -269,7 +269,6 @@ void ALSM::UpdateData(const bool hybrid_physics_mode, const Actor &vehicle,
 
 void ALSM::UpdateUnregisteredActorsData() {
   for (auto &actor_info: unregistered_actors) {
-
     const ActorId actor_id = actor_info.first;
     const ActorPtr actor_ptr = actor_info.second;
     const std::string type_id = actor_ptr->GetTypeId();
@@ -328,6 +327,22 @@ void ALSM::UpdateUnregisteredActorsData() {
         simulation_state.UpdateKinematicState(actor_id, kinematic_state);
       }
 
+      // Identify occupied waypoints.
+      SimpleWaypointPtr nearest_waypoint = local_map->GetWaypoint(actor_location);
+      nearest_waypoints.push_back(nearest_waypoint);
+    }
+    else if (type_id == "blueprint.constructionsite") {
+      auto static_prop_ptr = std::static_pointer_cast<cc::Actor>(actor_ptr);
+
+      if(state_entry_not_present) {
+        dimensions = static_prop_ptr->GetBoundingBox().extent;
+        actor_type = ActorType::Static_Anomaly;
+        StaticAttributes attributes {actor_type, dimensions.x, dimensions.y, dimensions.z};
+
+        simulation_state.AddActor(actor_id, kinematic_state, attributes, tl_state);
+      } else {
+        simulation_state.UpdateKinematicState(actor_id, kinematic_state);
+      }
       // Identify occupied waypoints.
       SimpleWaypointPtr nearest_waypoint = local_map->GetWaypoint(actor_location);
       nearest_waypoints.push_back(nearest_waypoint);

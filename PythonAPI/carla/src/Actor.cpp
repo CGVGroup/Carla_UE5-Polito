@@ -97,6 +97,10 @@ static cr::CityObjectLabel GetTagFromString(std::string Tag)
   if(Tag=="Static_Anomaly") return cr::CityObjectLabel::Static_Anomaly;
   if(Tag=="Dynamic_Anomaly") return cr::CityObjectLabel::Dynamic_Anomaly;
   if(Tag=="Animal") return cr::CityObjectLabel::Animal;
+  if(Tag=="Tiny_Anomaly") return cr::CityObjectLabel::Tiny_Anomaly;
+  if(Tag=="Small_Anomaly") return cr::CityObjectLabel::Small_Anomaly;
+  if(Tag=="Medium_Anomaly") return cr::CityObjectLabel::Medium_Anomaly;
+  if(Tag=="Large_Anomaly") return cr::CityObjectLabel::Large_Anomaly;
 
   if(Tag=="Static") return cr::CityObjectLabel::Static;
   if(Tag=="Dynamic") return cr::CityObjectLabel::Dynamic;

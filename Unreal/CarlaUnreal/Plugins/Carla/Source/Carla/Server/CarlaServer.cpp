@@ -277,12 +277,14 @@ void FCarlaServer::FPimpl::BindActions()
       auto parent_ue = actor_ue->GetOwner();
       if (parent_ue){
         //UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d, actor has parent name: %s"), id, *parent_ue->GetName());
-        return Episode->SerializeActor(parent_ue);
-      }else{
-        //UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d, parent not found"), id);
+        UActorDispatcher* ActorDispatcher = Episode->GetActorDispatcher();
+        auto actor = Episode->SerializeActor(parent_actor);
+        auto p_actor = ActorDispatcher->GetActorRegistry().FindCarlaActor(parent_ue);
+        if (p_actor == nullptr){
+          p_actor = ActorDispatcher->RegisterActor(*parent_ue, actor.description, actor.id);
+        }
+        return p_actor->GetActorInfo()->SerializedData;
       }
-    }else{
-      //UE_LOG(LogCarla, Warning, TEXT("get_parent called with id: %d, actor not found"), id);
     }
     return Episode->SerializeActor(parent_actor);
   };
