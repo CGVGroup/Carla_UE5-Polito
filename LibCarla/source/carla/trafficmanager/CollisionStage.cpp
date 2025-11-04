@@ -88,14 +88,14 @@ void CollisionStage::Update(const unsigned long index) {
           && simulation_state.ContainsActor(other_actor_id)) {
         std::pair<bool, float> negotiation_result = NegotiateCollision(ego_actor_id,
                                                                        other_actor_id,
-                                                                       look_ahead_index);
+                                                                       look_ahead_index);                                                          
         if (negotiation_result.first) {
           if ((other_actor_type == ActorType::Vehicle
                && parameters.GetPercentageIgnoreVehicles(ego_actor_id) <= random_device.next())
               || (other_actor_type == ActorType::Pedestrian
                   && parameters.GetPercentageIgnoreWalkers(ego_actor_id) <= random_device.next())
-                || (other_actor_type == ActorType::Static_Anomaly
-                  && parameters.GetPercentageRunningSign(ego_actor_id) <= random_device.next())) {
+                || (other_actor_type == ActorType::Anomaly
+                  && parameters.GetPercentageIgnoreWalkers(ego_actor_id) <= random_device.next())) {
             collision_hazard = true;
             obstacle_id = other_actor_id;
             available_distance_margin = negotiation_result.second;
@@ -147,6 +147,10 @@ LocationVector CollisionStage::GetBoundary(const ActorId actor_id) {
   float forward_extension = 0.0f;
   if (actor_type == ActorType::Pedestrian) {
     // Extend the pedestrians bbox to "predict" where they'll be and avoid collisions.
+    forward_extension = simulation_state.GetVelocity(actor_id).Length() * WALKER_TIME_EXTENSION;
+  }
+
+  if (actor_type == ActorType::Anomaly){
     forward_extension = simulation_state.GetVelocity(actor_id).Length() * WALKER_TIME_EXTENSION;
   }
 

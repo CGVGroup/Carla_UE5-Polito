@@ -11,7 +11,7 @@ namespace traffic_manager {
 enum ActorType {
   Vehicle,
   Pedestrian,
-  Static_Anomaly,
+  Anomaly,
   Any
 };
 

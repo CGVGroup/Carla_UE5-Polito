@@ -331,12 +331,15 @@ void ALSM::UpdateUnregisteredActorsData() {
       SimpleWaypointPtr nearest_waypoint = local_map->GetWaypoint(actor_location);
       nearest_waypoints.push_back(nearest_waypoint);
     }
-    else if (type_id == "blueprint.constructionsite") {
+    else if (type_id == "blueprint.constructionsite" ||
+             type_id == "blueprint.labrador" ||
+             type_id == "blueprint.person") {
+      
       auto static_prop_ptr = std::static_pointer_cast<cc::Actor>(actor_ptr);
 
       if(state_entry_not_present) {
         dimensions = static_prop_ptr->GetBoundingBox().extent;
-        actor_type = ActorType::Static_Anomaly;
+        actor_type = ActorType::Anomaly;
         StaticAttributes attributes {actor_type, dimensions.x, dimensions.y, dimensions.z};
 
         simulation_state.AddActor(actor_id, kinematic_state, attributes, tl_state);

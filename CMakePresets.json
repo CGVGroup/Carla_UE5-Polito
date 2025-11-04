@@ -22,7 +22,9 @@
             "inherits": "Common",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": true
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+                "Python_ROOT_DIR":"/home/nicholas/Desktop/venv/bin",
+    		"Python3_ROOT_DIR":"/home/nicholas/Desktop/venv/bin"
             }
         },
         {
