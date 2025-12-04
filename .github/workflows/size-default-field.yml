@@ -1,0 +1,26 @@
+name: Set default Size value 
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  set-default:
+    runs-on: ubuntu-latest   
+
+    steps:
+      # Step 1 — Add Issue to your GitHub Project (Projects v2)
+      - name: Add issue to project
+        uses: actions/add-to-project@v1
+        with:
+          project-url: https://github.com/orgs/CGVGroup/projects/6
+          github-token: ${{ secrets.CARLA_PROJECT_TOKEN }}
+
+      # Step 2 — Set a default value for a custom field
+      - name: Update project custom field
+        uses: nipe0324/update-project-v2-item-field@v2.0.2
+        with:
+          project-url: https://github.com/orgs/CGVGroup/projects/6
+          github-token: ${{ secrets.CARLA_PROJECT_TOKEN }}
+          field-name: Size          
+          field-value: S      
