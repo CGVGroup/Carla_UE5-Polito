@@ -1,28 +1,88 @@
-name: Set default Size value 
+const issueNodeId = context.payload.issue && context.payload.issue.node_id;
+if (!issueNodeId) throw new Error('Issue node_id not present in payload.');
 
-on:
-  issues:
-    types: [opened]
+// Get project fields and project id
+const projectQ = `
+  query($owner:String!, $number:Int!) {
+    organization(login:$owner) {
+      projectV2(number:$number) {
+        id
+        fields(first:100) {
+          nodes {
+            id
+            name
+            __typename
+            ... on ProjectV2SingleSelectField {
+              options { id name }
+            }
+          }
+        }
+      }
+    }
+  }`;
+const projectRes = await github.graphql(projectQ, { owner, number: projectNumber });
+const project = projectRes?.organization?.projectV2;
+if (!project) throw new Error(`Project #${projectNumber} not found in ${owner}.`);
 
-jobs:
-  set-default:
-    runs-on: ubuntu-latest   
+const field = project.fields.nodes.find(f => f.name === fieldName);
+if (!field) throw new Error(`Field "${fieldName}" not found. Check exact name & spacing.`);
 
-    steps:
-      # Step 1 — Add Issue to your GitHub Project (Projects v2)
-      - name: Add issue to project
-        uses: actions/add-to-project@v1.0.2
-        with:
-          project-url: https://github.com/orgs/CGVGroup/projects/6
-          github-token: ${{ secrets.CARLA_PROJECT_TOKEN }}
+let optionId = null;
+if (field.__typename === 'ProjectV2SingleSelectField') {
+  optionId = field.options.find(o => o.name === optionLabel)?.id;
+  if (!optionId) {
+    const available = field.options.map(o => o.name).join(', ');
+    throw new Error(`Option "${optionLabel}" not found in field "${fieldName}". Available: ${available}`);
+  }
+}
 
-      # Step 2 — Set a default value for a custom field
-      - name: Ini Size field to S
-        uses: nipe0324/update-project-v2-item-field@v2.0.2
-        with:
-          project-url: https://github.com/orgs/CGVGroup/projects/6
-          github-token: ${{ secrets.CARLA_PROJECT_TOKEN }}
-          field-name: "Size"          
-          field-value: "S"      
+// Paginate items to find the project item for this issue
+let item = null;
+let cursor = null;
+while (true) {
+  const itemsQ = `
+    query($owner:String!, $number:Int!, $after:String) {
+      organization(login:$owner) {
+        projectV2(number:$number) {
+          items(first:100, after:$after) {
+            pageInfo { hasNextPage endCursor }
+            nodes {
+              id
+              content {
+                ... on Issue { id }
+              }
+            }
+          }
+        }
+      }
+    }`;
+  const itemsRes = await github.graphql(itemsQ, { owner, number: projectNumber, after: cursor });
+  const items = itemsRes.organization.projectV2.items;
+  for (const n of items.nodes) {
+    if (n.content && n.content.id === issueNodeId) {
+      item = n;
+      break;
+    }
+  }
+  if (item) break;
+  if (!items.pageInfo.hasNextPage) break;
+  cursor = items.pageInfo.endCursor;
+}
 
+if (!item) throw new Error('Project item for this issue not found. The item might not yet exist or token lacks access.');
 
+// Update the field (single-select)
+const input = {
+  projectId: project.id,
+  itemId: item.id,
+  fieldId: field.id,
+  value: JSON.stringify({ singleSelectOptionId: optionId })
+};
+const m = `
+  mutation($input: UpdateProjectV2ItemFieldValueInput!) {
+    updateProjectV2ItemFieldValue(input: $input) {
+      projectV2Item { id }
+    }
+  }`;
+await github.graphql(m, { input });
+console.log(`Set "${fieldName}" = "${optionLabel}" on item ${item.id}`);
