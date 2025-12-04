@@ -22,6 +22,7 @@ jobs:
         with:
           project-url: https://github.com/orgs/CGVGroup/projects/6
           github-token: ${{ secrets.CARLA_PROJECT_TOKEN }}
-          field-name: Size          
-          field-value: S      
+          field-name: "Size"          
+          field-value: "S"      
+
 
