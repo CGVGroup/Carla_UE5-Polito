@@ -428,6 +428,8 @@ namespace detail {
 
     void UpdateDayNightCycle(const bool active) const;
 
+    void SetControlValuesDashboard(float speed, float steer) const;
+
     /// Returns all the BBs of all the elements of the level
     std::vector<geom::BoundingBox> GetLevelBBs(uint8_t queried_tag) const;
 

@@ -269,4 +269,11 @@ void export_actor() {
       .def("get_stop_waypoints", CALL_RETURNING_LIST(cc::TrafficLight, GetStopWaypoints))
       .def(self_ns::str(self_ns::self))
   ;
+
+  class_<cc::Dashboard, bases<cc::Actor>, boost::noncopyable, std::shared_ptr<cc::Dashboard>>(
+      "Dashboard",
+      no_init)
+      .def("set_control_value_dashboard", &cc::Dashboard::SetControlValues, (arg("speed")), (arg("steer")))
+      .def(self_ns::str(self_ns::self))
+  ;
 }

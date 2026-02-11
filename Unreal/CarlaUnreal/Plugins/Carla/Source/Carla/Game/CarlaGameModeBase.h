@@ -7,6 +7,7 @@
 #pragma once
 
 #include "Carla/Actor/CarlaActorFactory.h"
+#include "Carla/Dashboard/Dashboard.h"
 #include "Carla/Game/CarlaEpisode.h"
 #include "Carla/Game/CarlaGameInstance.h"
 #include "Carla/Game/TaggerDelegate.h"
@@ -101,6 +102,9 @@ public:
   UFUNCTION(BlueprintCallable, Category = "Carla Game Mode")
   void OnUnloadStreamLevel();
 
+  UFUNCTION(BlueprintCallable, Category = "Carla Game Mode")
+  void DashboardSetControlValues(float speed_value, float steering_value);
+
   ALargeMapManager* GetLMManager() const {
     return LMManager;
   }
@@ -147,6 +151,9 @@ private:
   void ConvertMapLayerMaskToMapNames(int32 MapLayer, TArray<FName>& OutLevelNames);
 
   void OnEpisodeSettingsChanged(const FEpisodeSettings &Settings);
+
+  UPROPERTY()
+  ADashboard* Dashboard = nullptr;
 
   UPROPERTY()
   UCarlaGameInstance *GameInstance = nullptr;

@@ -793,3 +793,11 @@ void ACarlaGameModeBase::OnEpisodeSettingsChanged(const FEpisodeSettings &Settin
 {
   CarlaSettingsDelegate->SetAllActorsDrawDistance(GetWorld(), Settings.MaxCullingDistance);
 }
+
+void ACarlaGameModeBase::DashboardSetControlValues(float speed_value, float steering_value)
+{
+  if(Dashboard)
+  {
+    Dashboard->SetControlValues(speed_value, steering_value);
+  }
+}

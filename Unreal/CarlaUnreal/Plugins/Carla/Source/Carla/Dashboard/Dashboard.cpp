@@ -6,8 +6,6 @@
 
 #include "carla/Dashboard/Dashboard.h"
 
-#include "carla/Logging.h"
-#include "carla/client/detail/Simulator.h"
 
 namespace carla {
 

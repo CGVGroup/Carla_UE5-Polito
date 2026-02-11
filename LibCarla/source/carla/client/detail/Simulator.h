@@ -770,6 +770,10 @@ namespace detail {
       _client.UpdateDayNightCycle(active);
     }
 
+    void SetControlValuesDashboard(float speed, float steer) const {
+      _client.SetControlValuesDashboard(speed, steer);
+	}
+
     size_t RegisterLightUpdateChangeEvent(std::function<void(WorldSnapshot)> callback) {
       DEBUG_ASSERT(_episode != nullptr);
       return _episode->RegisterLightUpdateChangeEvent(std::move(callback));

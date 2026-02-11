@@ -6,9 +6,7 @@
 
 #pragma once
 
-#include <util/ue-header-guard-begin.h>
-#include "GameFramework/Character.h"
-#include <util/ue-header-guard-end.h>
+
 
 #include "Dashboard.generated.h"
 

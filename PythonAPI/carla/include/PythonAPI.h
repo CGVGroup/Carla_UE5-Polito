@@ -29,6 +29,7 @@
 #include <carla/rpc/EnvironmentObject.h>
 #include <carla/rpc/ObjectLabel.h>
 
+#include <carla/client/Dashboard.h>
 #include <carla/client/Actor.h>
 #include <carla/client/TrafficLight.h>
 #include <carla/client/Vehicle.h>

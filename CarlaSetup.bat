@@ -146,3 +146,5 @@ if %launch%==true (
     echo Launching Carla Unreal Editor...
     cmake --build Build --target launch || exit /b
 )
+
+pause
