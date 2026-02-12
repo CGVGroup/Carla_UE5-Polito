@@ -695,6 +695,36 @@ namespace detail {
 	_pimpl->AsyncCall("set_control_values_dashboard", speed, steer);
   }
 
+  void Client::SetTypeStringDashboard(std::string type) const {
+      _pimpl->AsyncCall("set_type_string_dashboard", type);
+  }
+
+  void Client::AddVectorPairDashboard(geom::Vector3D Pos, geom::Vector3D Rot) const {
+      _pimpl->AsyncCall("add_vector_pair_dashboard", Pos, Rot);
+  }
+
+  void Client::RemoveIdObstacleDashboard(int Id) const {
+      _pimpl->AsyncCall("remove_ID_obstacle_dashboard", Id);
+  }
+
+  void Client::UpdateObstacleDashboard(int Id,
+      const std::string Type,
+      bool isDanger,
+      geom::Vector3D  Vector1,
+      geom::Vector3D Vector2,
+      float obstacleSpeed,
+      float obstacleSteer) const {
+      _pimpl->AsyncCall("update_obstacle_dashboard", Id,Type, isDanger, Vector1, Vector2, obstacleSpeed, obstacleSteer);
+  }
+
+  void Client::UpdateDashboard() const {
+      _pimpl->AsyncCall("update_dashboard");
+  }
+
+  void Client::TriggerPathDashboard() const {
+      _pimpl->AsyncCall("trigger_path_dashboard");
+  }
+
   std::vector<geom::BoundingBox> Client::GetLevelBBs(uint8_t queried_tag) const {
     using return_t = std::vector<geom::BoundingBox>;
     return _pimpl->CallAndWait<return_t>("get_all_level_BBs", queried_tag);

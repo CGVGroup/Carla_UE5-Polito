@@ -273,7 +273,13 @@ void export_actor() {
   class_<cc::Dashboard, bases<cc::Actor>, boost::noncopyable, std::shared_ptr<cc::Dashboard>>(
       "Dashboard",
       no_init)
-      .def("set_control_value_dashboard", &cc::Dashboard::SetControlValues, (arg("speed")), (arg("steer")))
+      .def("set_control_value_dashboard", &cc::Dashboard::SetControlValues, (arg("speed"), arg("steer")))
+      .def("set_type_string_dashboard", &cc::Dashboard::SetTypeString, (arg("type")))
+      .def("add_vector_pair_dashboard", &cc::Dashboard::AddVectorPair, (arg("position"), arg("rotation")))
+      .def("remove_id_obstable_dashboard", &cc::Dashboard::RemoveIdObstacle, (arg("id")))
+      .def("update_obstacle_dashboard", &cc::Dashboard::UpdateObstacle, (arg("id"), arg("type"), arg("isDanger"), arg("Vector1"), arg("Vector2"), arg("obstacleSpeed"), arg("obstacleSteer")))
+      .def("update_dashboard", &cc::Dashboard::Update)
+      .def("trigger_path_dashboard", &cc::Dashboard::TriggerPath)
       .def(self_ns::str(self_ns::self))
   ;
 }

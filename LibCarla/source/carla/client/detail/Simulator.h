@@ -774,6 +774,36 @@ namespace detail {
       _client.SetControlValuesDashboard(speed, steer);
 	}
 
+    void SetTypeStringDashboard(std::string type) const {
+        _client.SetTypeStringDashboard(type);
+    }
+
+    void AddVectorPairDashboard(geom::Vector3D Pos, geom::Vector3D Rot) const {
+        _client.AddVectorPairDashboard(Pos, Rot);
+    }
+
+    void RemoveIdObstacleDashboard(int Id) const {
+        _client.RemoveIdObstacleDashboard(Id);
+    }
+
+    void UpdateObstacleDashboard(int Id,
+        const std::string Type,
+        bool isDanger,
+        geom::Vector3D  Vector1,
+        geom::Vector3D Vector2,
+        float obstacleSpeed,
+        float obstacleSteer) const {
+            _client.UpdateObstacleDashboard(Id, Type, isDanger, Vector1, Vector2, obstacleSpeed, obstacleSteer);
+    }
+
+    void UpdateDashboard() const {
+        _client.UpdateDashboard();
+    }
+
+    void TriggerPathDashboard() const {
+        _client.TriggerPathDashboard();
+    }
+
     size_t RegisterLightUpdateChangeEvent(std::function<void(WorldSnapshot)> callback) {
       DEBUG_ASSERT(_episode != nullptr);
       return _episode->RegisterLightUpdateChangeEvent(std::move(callback));

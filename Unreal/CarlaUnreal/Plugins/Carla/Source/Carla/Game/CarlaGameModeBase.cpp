@@ -801,3 +801,51 @@ void ACarlaGameModeBase::DashboardSetControlValues(float speed_value, float stee
     Dashboard->SetControlValues(speed_value, steering_value);
   }
 }
+
+void ACarlaGameModeBase::DashboardSetTypeString(FString type)
+{
+    if (Dashboard)
+    {
+        Dashboard->SetTypeString(type);
+    }
+}
+
+void ACarlaGameModeBase::DashboardAddVectorPair(FVector P, FVector R)
+{
+    if (Dashboard)
+    {
+		Dashboard->AddVectorPair(P, R);
+    }
+}
+
+void ACarlaGameModeBase::DashboardRemoveIDObstacle(int Id)
+{
+    if (Dashboard)
+    {
+        Dashboard->RemoveIDObstacle(Id);
+    }
+}
+
+void ACarlaGameModeBase::DashboardUpdateObstacle(int ID, const FString& Type, bool isDanger, FVector Vector1, FVector Vector2, float obstacleSpeed, float obstacleSteer)
+{
+    if (Dashboard)
+    {
+        Dashboard->UpdateObstacle(ID, Type, isDanger, Vector1, Vector2, obstacleSpeed, obstacleSteer);
+    }
+}
+
+void ACarlaGameModeBase::DashboardUpdate()
+{
+    if (Dashboard)
+    {
+        Dashboard->UpdateDashboard();
+    }
+}
+
+void ACarlaGameModeBase::DashboardTriggerPathSetEvent()
+{
+    if (Dashboard)
+    {
+        Dashboard->TriggerPathSetEvent();
+    }
+}

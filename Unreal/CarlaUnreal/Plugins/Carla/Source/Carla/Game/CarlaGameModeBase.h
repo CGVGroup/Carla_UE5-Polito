@@ -103,7 +103,20 @@ public:
   void OnUnloadStreamLevel();
 
   UFUNCTION(BlueprintCallable, Category = "Carla Game Mode")
+
   void DashboardSetControlValues(float speed_value, float steering_value);
+
+  void DashboardSetTypeString(FString type);
+
+  void DashboardAddVectorPair(FVector P, FVector R);
+
+  void DashboardRemoveIDObstacle(int Id);
+
+  void DashboardUpdateObstacle(int ID, const FString& Type, bool isDanger, FVector Vector1, FVector Vector2, float obstacleSpeed, float obstacleSteer);
+
+  void DashboardUpdate();
+
+  void DashboardTriggerPathSetEvent();
 
   ALargeMapManager* GetLMManager() const {
     return LMManager;

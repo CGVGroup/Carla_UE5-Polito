@@ -430,6 +430,18 @@ namespace detail {
 
     void SetControlValuesDashboard(float speed, float steer) const;
 
+    void SetTypeStringDashboard(std::string type) const;
+
+    void AddVectorPairDashboard(geom::Vector3D Pos, geom::Vector3D Rot) const;
+
+    void RemoveIdObstacleDashboard(int Id) const;
+
+    void UpdateObstacleDashboard(int Id, const std::string Type, bool isDanger, geom::Vector3D Vector1, geom::Vector3D Vector2, float obstacleSpeed, float obstacleSteer) const;
+
+    void UpdateDashboard() const;
+
+    void TriggerPathDashboard() const;
+
     /// Returns all the BBs of all the elements of the level
     std::vector<geom::BoundingBox> GetLevelBBs(uint8_t queried_tag) const;
 

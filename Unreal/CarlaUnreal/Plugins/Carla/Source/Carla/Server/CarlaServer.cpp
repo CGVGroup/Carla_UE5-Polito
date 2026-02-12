@@ -2737,6 +2737,93 @@ BIND_SYNC(is_sensor_enabled_for_ros) << [this](carla::streaming::detail::stream_
           return R<void>::Success();
       };
       
+  BIND_SYNC(set_type_string_dashboard) << [this](
+      std::string type) -> R<void>  
+      {
+          REQUIRE_CARLA_EPISODE();
+          ACarlaGameModeBase* GameMode = UCarlaStatics::GetGameMode(Episode->GetWorld());
+          if (!GameMode)
+          {
+              RESPOND_ERROR("unable to find CARLA game mode");
+          }
+          GameMode->DashboardSetTypeString(cr::ToFString(type));
+
+          return R<void>::Success();
+      };
+
+  BIND_SYNC(add_vector_pair_dashboard) << [this](
+      cr::Vector3D Pos, cr::Vector3D Rot) -> R<void>
+      {
+          REQUIRE_CARLA_EPISODE();
+          ACarlaGameModeBase* GameMode = UCarlaStatics::GetGameMode(Episode->GetWorld());
+          if (!GameMode)
+          {
+              RESPOND_ERROR("unable to find CARLA game mode");
+          }
+          GameMode->DashboardAddVectorPair(Pos.ToFVector(), Rot.ToFVector());
+
+          return R<void>::Success();
+      };
+
+  BIND_SYNC(remove_ID_obstacle_dashboard) << [this](
+      int Id) -> R<void>
+      {
+          REQUIRE_CARLA_EPISODE();
+          ACarlaGameModeBase* GameMode = UCarlaStatics::GetGameMode(Episode->GetWorld());
+          if (!GameMode)
+          {
+              RESPOND_ERROR("unable to find CARLA game mode");
+          }
+          GameMode->DashboardRemoveIDObstacle(Id);
+
+          return R<void>::Success();
+      };
+
+  BIND_SYNC(update_obstacle_dashboard) << [this](
+      int ID, 
+      const std::string Type, 
+      bool isDanger, 
+      cr::Vector3D  Vector1, 
+      cr::Vector3D Vector2, 
+      float obstacleSpeed, 
+      float obstacleSteer) -> R<void>
+      {
+          REQUIRE_CARLA_EPISODE();
+          ACarlaGameModeBase* GameMode = UCarlaStatics::GetGameMode(Episode->GetWorld());
+          if (!GameMode)
+          {
+              RESPOND_ERROR("unable to find CARLA game mode");
+          }
+          GameMode->DashboardUpdateObstacle(ID, cr::ToFString(Type), isDanger, Vector1.ToFVector(), Vector2.ToFVector(), obstacleSpeed, obstacleSteer);
+
+          return R<void>::Success();
+      };
+
+  BIND_SYNC(update_dashboard) << [this]() -> R<void>
+      {
+          REQUIRE_CARLA_EPISODE();
+          ACarlaGameModeBase* GameMode = UCarlaStatics::GetGameMode(Episode->GetWorld());
+          if (!GameMode)
+          {
+              RESPOND_ERROR("unable to find CARLA game mode");
+          }
+          GameMode->DashboardUpdate();
+
+          return R<void>::Success();
+      };
+
+  BIND_SYNC(trigger_path_dashboard) << [this]() -> R<void>
+      {
+          REQUIRE_CARLA_EPISODE();
+          ACarlaGameModeBase* GameMode = UCarlaStatics::GetGameMode(Episode->GetWorld());
+          if (!GameMode)
+          {
+              RESPOND_ERROR("unable to find CARLA game mode");
+          }
+          GameMode->DashboardTriggerPathSetEvent();
+
+          return R<void>::Success();
+      };
 }
 
 // =============================================================================
