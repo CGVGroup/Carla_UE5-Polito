@@ -1,0 +1,35 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "4.4.0",
+	"FriendlyName": "Joystick Plugin",
+	"Description": "Unreal Engine Plugin to add Joystick Controllers as Input Devices (with Force Feedback support)",
+	"Category": "Input Devices",
+	"CreatedBy": "Jayden Maalouf",
+	"CreatedByURL": "https://github.com/JaydenMaalouf/JoystickPlugin",
+	"DocsURL": "https://github.com/JaydenMaalouf/JoystickPlugin/wiki",
+	"MarketplaceURL": "",
+	"SupportURL": "https://github.com/JaydenMaalouf/JoystickPlugin/issues",
+	"EngineVersion": "5.5.0",
+	"CanContainContent": false,
+	"Installed": true,
+	"Modules": [
+		{
+			"Name": "JoystickPlugin",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit",
+			"PlatformAllowList": [
+				"Win64",
+				"Linux"
+			]
+		},
+		{
+			"Name": "JoystickPluginEditor",
+			"Type": "Editor",
+			"LoadingPhase": "PostEngineInit",
+			"AdditionalDependencies": [
+				"Engine"
+			]
+		}
+	]
+}

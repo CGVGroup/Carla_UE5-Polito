@@ -789,6 +789,10 @@ void ACarlaGameModeBase::OnUnloadStreamLevel()
   }
 }
 
+void ACarlaGameModeBase::SetDashboaard(ADashboard* dash) {
+    Dashboard = dash;
+}
+
 void ACarlaGameModeBase::OnEpisodeSettingsChanged(const FEpisodeSettings &Settings)
 {
   CarlaSettingsDelegate->SetAllActorsDrawDistance(GetWorld(), Settings.MaxCullingDistance);

@@ -102,6 +102,8 @@ public:
   UFUNCTION(BlueprintCallable, Category = "Carla Game Mode")
   void OnUnloadStreamLevel();
 
+  void SetDashboaard(ADashboard* dash);
+
   UFUNCTION(BlueprintCallable, Category = "Carla Game Mode")
 
   void DashboardSetControlValues(float speed_value, float steering_value);
