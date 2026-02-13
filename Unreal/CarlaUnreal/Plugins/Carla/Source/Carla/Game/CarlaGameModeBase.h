@@ -102,22 +102,28 @@ public:
   UFUNCTION(BlueprintCallable, Category = "Carla Game Mode")
   void OnUnloadStreamLevel();
 
-  void SetDashboaard(ADashboard* dash);
+  UFUNCTION(BlueprintCallable, Category = "Carla Game Mode")
+  void SetDashboard(ADashboard* dash);
 
   UFUNCTION(BlueprintCallable, Category = "Carla Game Mode")
-
   void DashboardSetControlValues(float speed_value, float steering_value);
 
+  UFUNCTION(BlueprintCallable, Category = "Carla Game Mode")
   void DashboardSetTypeString(FString type);
 
+  UFUNCTION(BlueprintCallable, Category = "Carla Game Mode")
   void DashboardAddVectorPair(FVector P, FVector R);
 
+  UFUNCTION(BlueprintCallable, Category = "Carla Game Mode")
   void DashboardRemoveIDObstacle(int Id);
 
+  UFUNCTION(BlueprintCallable, Category = "Carla Game Mode")
   void DashboardUpdateObstacle(int ID, const FString& Type, bool isDanger, FVector Vector1, FVector Vector2, float obstacleSpeed, float obstacleSteer);
 
+  UFUNCTION(BlueprintCallable, Category = "Carla Game Mode")
   void DashboardUpdate();
 
+  UFUNCTION(BlueprintCallable, Category = "Carla Game Mode")
   void DashboardTriggerPathSetEvent();
 
   ALargeMapManager* GetLMManager() const {

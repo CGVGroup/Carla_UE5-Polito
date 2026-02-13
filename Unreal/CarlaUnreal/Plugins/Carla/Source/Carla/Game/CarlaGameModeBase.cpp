@@ -789,7 +789,7 @@ void ACarlaGameModeBase::OnUnloadStreamLevel()
   }
 }
 
-void ACarlaGameModeBase::SetDashboaard(ADashboard* dash) {
+void ACarlaGameModeBase::SetDashboard(ADashboard* dash) {
     Dashboard = dash;
 }
 
