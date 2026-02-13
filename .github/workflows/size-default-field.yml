@@ -1,0 +1,118 @@
+steps:
+  # Step 1 — Add Issue to your GitHub Project (Projects v2)
+  - name: Add issue to project
+    uses: actions/add-to-project@v1.0.2
+    id: add_to_project
+    with:
+      project-url: https://github.com/orgs/CGVGroup/projects/6
+      github-token: ${{ secrets.CARLA_PROJECT_TOKEN }}
+
+  # Step 2 — Set a default value for the "Size" single-select field
+  - name: Set Size field to S (projects v2)
+    uses: actions/github-script@v6
+    env:
+      GH_TOKEN: ${{ secrets.CARLA_PROJECT_TOKEN }}
+    with:
+      github-token: ${{ secrets.CARLA_PROJECT_TOKEN }}
+      script: |
+        const owner = 'CGVGroup';
+        const projectNumber = 6; // project number from your project-url
+        const fieldName = 'Size';
+        const optionLabel = 'S';
+
+        const issueNodeId = context.payload.issue && context.payload.issue.node_id;
+        if (!issueNodeId) throw new Error('Issue node_id not found in payload.');
+
+        // Query project id and fields (with options for single-select fields)
+        const projectQ = `
+          query($owner:String!, $number:Int!) {
+            organization(login:$owner) {
+              projectV2(number:$number) {
+                id
+                fields(first:100) {
+                  nodes {
+                    id
+                    name
+                    __typename
+                    ... on ProjectV2SingleSelectField {
+                      options { id name }
+                    }
+                  }
+                }
+              }
+            }
+          }`;
+        const projectRes = await github.graphql(projectQ, { owner, number: projectNumber });
+        const project = projectRes?.organization?.projectV2;
+        if (!project) throw new Error(`Project #${projectNumber} not found in ${owner}.`);
+
+        const field = project.fields.nodes.find(f => f.name === fieldName);
+        if (!field) throw new Error(`Field "${fieldName}" not found. Check exact name & spacing.`);
+
+        if (field.__typename !== 'ProjectV2SingleSelectField') {
+          throw new Error(`Field "${fieldName}" is not a single-select field. This workflow expects a single-select.`);
+        }
+
+        const optionId = field.options.find(o => o.name === optionLabel)?.id;
+        if (!optionId) {
+          const available = field.options.map(o => o.name).join(', ');
+          throw new Error(`Option "${optionLabel}" not found in field "${fieldName}". Available: ${available}`);
+        }
+
+        // Helper: find project item for this issue (with pagination)
+        async function findProjectItem() {
+          let after = null;
+          while (true) {
+            const itemsQ = `
+              query($owner:String!, $number:Int!, $after:String) {
+                organization(login:$owner) {
+                  projectV2(number:$number) {
+                    items(first:100, after:$after) {
+                      pageInfo { hasNextPage endCursor }
+                      nodes {
+                        id
+                        content {
+                          ... on Issue { id }
+                        }
+                      }
+                    }
+                  }
+                }
+              }`;
+            const itemsRes = await github.graphql(itemsQ, { owner, number: projectNumber, after });
+            const items = itemsRes.organization.projectV2.items;
+            for (const n of items.nodes) {
+              if (n.content && n.content.id === issueNodeId) return n;
+            }
+            if (!items.pageInfo.hasNextPage) return null;
+            after = items.pageInfo.endCursor;
+          }
+        }
+
+        // Retry a few times because add-to-project may not have completed
+        let item = null;
+        const maxAttempts = 6;
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+          item = await findProjectItem();
+          if (item) break;
+          // wait before retry (2s, 4s, ... backoff)
+          await new Promise(res => setTimeout(res, 2000 * attempt));
+        }
+
+        if (!item) throw new Error('Project item for this issue not found after retries. The item may not exist yet or the token lacks access.');
+
+        // Update the single-select field on the project item
+        const input = {
+          projectId: project.id,
+          itemId: item.id,
+          fieldId: field.id,
+          value: JSON.stringify({ singleSelectOptionId: optionId })
+        };
+        const m = `
+          mutation($input: UpdateProjectV2ItemFieldValueInput!) {
+            updateProjectV2ItemFieldValue(input: $input) {
+              projectV2Item { id }
+            }
+          }`;
+        await github.graphql(m, { input });
+        console.log(`Set "${fieldName}" = "${optionLabel}" on item ${item.id}`);
