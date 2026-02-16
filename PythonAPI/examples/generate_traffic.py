@@ -138,6 +138,8 @@ def main():
             settings.no_rendering_mode = True
         world.apply_settings(settings)
 
+        print(get_actor_blueprints(world,"All","All"))
+
         blueprints = get_actor_blueprints(world, args.filterv, args.generationv)
         if not blueprints:
             raise ValueError("Couldn't find any vehicles with the specified filters")
