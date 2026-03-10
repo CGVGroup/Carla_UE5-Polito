@@ -4,7 +4,7 @@
 
 #include "carla/Debug.h"
 #include "carla/Memory.h"
-#include "carla/client/detail/simulator.h"
+#include "carla/client/detail/Simulator.h"
 
 namespace carla{
   namespace client {
