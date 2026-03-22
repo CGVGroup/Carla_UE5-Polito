@@ -1,0 +1,32 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "CarlaVR_Vehicles",
+	"Description": "CarlaVR_Vehicles",
+	"Category": "Other",
+	"CreatedBy": "CGVG@Polito",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"EngineVersion": "5.5.0",
+	"CanContainContent": true,
+	"Installed": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Plugins": [
+		{
+			"Name": "CARLA",
+			"Enabled": true
+		},
+		{
+			"Name": "JoystickPlugin",
+			"Enabled": true
+		},
+		{
+			"Name": "OpenXR",
+			"Enabled": true
+		}
+	]
+}

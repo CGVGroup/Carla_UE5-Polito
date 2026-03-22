@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "{8D4C1B54-42A8-99E0-313A-1C8C24A8F221}",
+	"EngineAssociation": "{DABF975C-456E-071A-DE8F-E58CDD5292B8}",
 	"Category": "",
 	"Description": "",
 	"Modules": [
@@ -117,7 +117,7 @@
 		},
 		{
 			"Name": "OculusXR",
-			"Enabled": true,
+			"Enabled": false,
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/8313d8d7e7cf4e03a33e79eb757bccba",
 			"SupportedTargetPlatforms": [
 				"Win64",
@@ -132,6 +132,10 @@
 				"Linux",
 				"Android"
 			]
+		},
+		{
+			"Name": "CarlaVR_Vehicles",
+			"Enabled": true
 		}
 	],
 	"TargetPlatforms": [
