@@ -231,6 +231,16 @@ namespace client {
         const rpc::TextureFloatColor& normal_texture,
         const rpc::TextureFloatColor& ao_roughness_metallic_emissive_texture);
 
+    void SetControlValuesDashboard(float speed, float steer);
+    void SetTypeStringDashboard(std::string type);
+    void AddVectorPairDashboard(geom::Vector3D Pos, geom::Vector3D Rot);
+    void RemoveIdObstacleDashboard(int Id);
+    void UpdateObstacleDashboard(int Id, const std::string Type, bool isDanger,
+        geom::Vector3D Vector1, geom::Vector3D Vector2,
+        float obstacleSpeed, float obstacleSteer);
+    void UpdateDashboard();
+    void TriggerPathDashboard();
+
     std::vector<std::string> GetNamesOfAllObjects() const;
 
   private:

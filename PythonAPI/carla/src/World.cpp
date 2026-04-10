@@ -309,6 +309,19 @@ void export_world() {
     .def("get_map", CONST_CALL_WITHOUT_GIL(cc::World, GetMap))
     .def("get_random_location_from_navigation", CALL_RETURNING_OPTIONAL_WITHOUT_GIL(cc::World, GetRandomLocationFromNavigation))
     .def("get_spectator", CONST_CALL_WITHOUT_GIL(cc::World, GetSpectator))
+    .def("set_control_value_dashboard", &cc::World::SetControlValuesDashboard,
+          (arg("speed"), arg("steer")))
+    .def("set_type_string_dashboard", &cc::World::SetTypeStringDashboard,
+          (arg("type")))
+    .def("add_vector_pair_dashboard", &cc::World::AddVectorPairDashboard,
+          (arg("position"), arg("rotation")))
+    .def("remove_id_obstacle_dashboard", &cc::World::RemoveIdObstacleDashboard,
+          (arg("id")))
+    .def("update_obstacle_dashboard", &cc::World::UpdateObstacleDashboard,
+          (arg("id"), arg("type"), arg("isDanger"), arg("Vector1"), arg("Vector2"),
+              arg("obstacleSpeed"), arg("obstacleSteer")))
+    .def("update_dashboard", &cc::World::UpdateDashboard)
+    .def("trigger_path_dashboard", &cc::World::TriggerPathDashboard)
     .def("get_settings", CONST_CALL_WITHOUT_GIL(cc::World, GetSettings))
     .def("apply_settings", &ApplySettings, (arg("settings"), arg("seconds")=0.0))
     .def("get_weather", CONST_CALL_WITHOUT_GIL(cc::World, GetWeather))

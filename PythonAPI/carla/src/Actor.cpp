@@ -270,9 +270,10 @@ void export_actor() {
       .def(self_ns::str(self_ns::self))
   ;
 
-  class_<cc::Dashboard, bases<cc::Actor>, boost::noncopyable, std::shared_ptr<cc::Dashboard>>(
+  /*class_<cc::Dashboard, bases<cc::Actor>, boost::noncopyable, std::shared_ptr<cc::Dashboard>>(
       "Dashboard",
       no_init)
+	  //.def("get_dashboard", &cc::Dashboard::GetDashboard)
       .def("set_control_value_dashboard", &cc::Dashboard::SetControlValues, (arg("speed"), arg("steer")))
       .def("set_type_string_dashboard", &cc::Dashboard::SetTypeString, (arg("type")))
       .def("add_vector_pair_dashboard", &cc::Dashboard::AddVectorPair, (arg("position"), arg("rotation")))
@@ -281,5 +282,5 @@ void export_actor() {
       .def("update_dashboard", &cc::Dashboard::Update)
       .def("trigger_path_dashboard", &cc::Dashboard::TriggerPath)
       .def(self_ns::str(self_ns::self))
-  ;
+  ;*/
 }

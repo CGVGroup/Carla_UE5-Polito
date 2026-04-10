@@ -790,7 +790,7 @@ void ACarlaGameModeBase::OnUnloadStreamLevel()
 }
 
 void ACarlaGameModeBase::SetDashboard(ADashboard* dash) {
-    Dashboard = dash;
+    DashboardComponent = dash;
 }
 
 void ACarlaGameModeBase::OnEpisodeSettingsChanged(const FEpisodeSettings &Settings)
@@ -800,56 +800,56 @@ void ACarlaGameModeBase::OnEpisodeSettingsChanged(const FEpisodeSettings &Settin
 
 void ACarlaGameModeBase::DashboardSetControlValues(float speed_value, float steering_value)
 {
-  if(Dashboard)
+  if(DashboardComponent)
   {
-    Dashboard->SetControlValues(speed_value, steering_value);
+    DashboardComponent->SetControlValues(speed_value, steering_value);
   }
 }
 
 void ACarlaGameModeBase::DashboardSetTypeString(FString type)
 {
-    if (Dashboard)
+    if(DashboardComponent)
     {
-        Dashboard->SetTypeString(type);
+        DashboardComponent->SetTypeString(type);
     }
 }
 
 void ACarlaGameModeBase::DashboardAddVectorPair(FVector P, FVector R)
 {
-    if (Dashboard)
+    if(DashboardComponent)
     {
-		Dashboard->AddVectorPair(P, R);
+		DashboardComponent->AddVectorPair(P, R);
     }
 }
 
 void ACarlaGameModeBase::DashboardRemoveIDObstacle(int Id)
 {
-    if (Dashboard)
+    if(DashboardComponent)
     {
-        Dashboard->RemoveIDObstacle(Id);
+        DashboardComponent->RemoveIDObstacle(Id);
     }
 }
 
 void ACarlaGameModeBase::DashboardUpdateObstacle(int ID, const FString& Type, bool isDanger, FVector Vector1, FVector Vector2, float obstacleSpeed, float obstacleSteer)
 {
-    if (Dashboard)
+    if(DashboardComponent)
     {
-        Dashboard->UpdateObstacle(ID, Type, isDanger, Vector1, Vector2, obstacleSpeed, obstacleSteer);
+        DashboardComponent->UpdateObstacle(ID, Type, isDanger, Vector1, Vector2, obstacleSpeed, obstacleSteer);
     }
 }
 
 void ACarlaGameModeBase::DashboardUpdate()
 {
-    if (Dashboard)
+    if(DashboardComponent)
     {
-        Dashboard->UpdateDashboard();
+        DashboardComponent->UpdateDashboard();
     }
 }
 
 void ACarlaGameModeBase::DashboardTriggerPathSetEvent()
 {
-    if (Dashboard)
+    if(DashboardComponent)
     {
-        Dashboard->TriggerPathSetEvent();
+        DashboardComponent->TriggerPathSetEvent();
     }
 }

@@ -56,6 +56,11 @@ public:
     return Map;
   }
 
+  carla::rpc::Actor GetDashboard() const {
+    //return <carla::rpc::Actor>DashboardComponent;
+      return Episode->SerializeActor(DashboardComponent);
+  }
+
   const FString GetFullMapPath() const;
 
   // get path relative to Content folder
@@ -174,7 +179,7 @@ private:
   void OnEpisodeSettingsChanged(const FEpisodeSettings &Settings);
 
   UPROPERTY()
-  ADashboard* Dashboard = nullptr;
+  ADashboard* DashboardComponent = nullptr;
 
   UPROPERTY()
   UCarlaGameInstance *GameInstance = nullptr;

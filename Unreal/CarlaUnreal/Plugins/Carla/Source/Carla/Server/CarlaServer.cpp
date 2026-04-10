@@ -2723,6 +2723,20 @@ BIND_SYNC(is_sensor_enabled_for_ros) << [this](carla::streaming::detail::stream_
     return std::string((const char*)NameStr.Get(), NameStr.Length());
   };
 
+  BIND_SYNC(get_dashboard) << [this]()
+      -> R<cr::Actor>
+      {
+          REQUIRE_CARLA_EPISODE();
+          ACarlaGameModeBase* GameMode = UCarlaStatics::GetGameMode(Episode->GetWorld());
+          if (!GameMode)
+          {
+              RESPOND_ERROR("unable to find CARLA game mode");
+          }
+          
+
+          return GameMode->GetDashboard();
+      };
+
   BIND_SYNC(set_control_values_dashboard) << [this](
       float speed, float steer) -> R<void>
       {

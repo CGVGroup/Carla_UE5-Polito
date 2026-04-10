@@ -387,5 +387,35 @@ namespace client {
     }
   }
 
+  void World::SetControlValuesDashboard(float speed, float steer) {
+      _episode.Lock()->SetControlValuesDashboard(speed, steer);
+  }
+
+  void World::SetTypeStringDashboard(std::string type) {
+      _episode.Lock()->SetTypeStringDashboard(type);
+  }
+
+  void World::AddVectorPairDashboard(geom::Vector3D Pos, geom::Vector3D Rot) {
+      _episode.Lock()->AddVectorPairDashboard(Pos, Rot);
+  }
+
+  void World::RemoveIdObstacleDashboard(int Id) {
+      _episode.Lock()->RemoveIdObstacleDashboard(Id);
+  }
+
+  void World::UpdateObstacleDashboard(int Id, const std::string Type, bool isDanger,
+      geom::Vector3D Vector1, geom::Vector3D Vector2,
+      float obstacleSpeed, float obstacleSteer) {
+      _episode.Lock()->UpdateObstacleDashboard(Id, Type, isDanger, Vector1, Vector2, obstacleSpeed, obstacleSteer);
+  }
+
+  void World::UpdateDashboard() {
+      _episode.Lock()->UpdateDashboard();
+  }
+
+  void World::TriggerPathDashboard() {
+      _episode.Lock()->TriggerPathDashboard();
+  }
+
 } // namespace client
 } // namespace carla

@@ -402,7 +402,7 @@ class KeyboardControl(object):
                     '''world.camera_manager.toggle_recording()
                 elif event.key == K_r: # and (pygame.key.get_mods() & KMOD_CTRL):
              '''
-                    carla.Dashboard.set_control_value_dashboard(12.3, 45.6)
+                    world.world.set_control_value_dashboard(12.3, 45.6)
                     #client.set_control_value_dashboard(123, 456)
                     print("pressing Dashboard button")
                     '''if world.recording_enabled:

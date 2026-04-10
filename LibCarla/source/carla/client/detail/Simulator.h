@@ -770,6 +770,19 @@ namespace detail {
       _client.UpdateDayNightCycle(active);
     }
 
+    /*       
+    rpc::EpisodeSettings GetEpisodeSettings() {
+      return _client.GetEpisodeSettings();
+    }*/
+
+    /*rpc::Actor GetDashboard() const {
+      return _client.GetDashboard();
+	}
+
+    SharedPtr<Actor> GetDashboard() {
+        return MakeActor(_client.GetDashboard());
+    }*/
+
     void SetControlValuesDashboard(float speed, float steer) const {
       _client.SetControlValuesDashboard(speed, steer);
 	}

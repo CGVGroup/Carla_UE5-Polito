@@ -12,6 +12,10 @@ namespace carla{
 	  class Dashboard : public Actor {
 	  public:
 
+		 // rpc::Actor Dashboard::GetDashboard() {
+		//	  return GetEpisode().Lock()->GetDashboard();
+		 // }
+
 		  // explicit Dashboard(ActorInitializer initializer);
 		  void Dashboard::SetControlValues(float speed, float steer) {
 			  GetEpisode().Lock()->SetControlValuesDashboard(speed, steer);
