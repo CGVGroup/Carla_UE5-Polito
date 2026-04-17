@@ -9,7 +9,7 @@ UGameLogger::UGameLogger()
     // Empty constructor
 }
 
-void UGameLogger::InitializeLogger(const FString& UserID, const FString& ScN, const FString& Displ, const FString& AbsoluteFolderPath)
+void UGameLogger::InitializeLogger(const FString& UserID, const FString& Veicolo, const FString& Avatar, const FString& Route, const FString& AbsoluteFolderPath)
 {
     IPlatformFile& PlatformFile = FPlatformFileManager::Get().GetPlatformFile();
 
@@ -29,12 +29,12 @@ void UGameLogger::InitializeLogger(const FString& UserID, const FString& ScN, co
 
     // Generate a safe filename with timestamp
     FString Timestamp = FDateTime::Now().ToString(TEXT("%Y-%m-%d_%H-%M-%S"));
-    FileName = LogDirectory + "/" + UserID + "_" + ScN + "_" + Displ + "_" + Timestamp + ".csv";
+    FileName = LogDirectory + "/" + UserID + "_" + Veicolo + "_" + Avatar + "_" + Route + "_" + Timestamp + ".csv";
 
     // Ensure the file exists, or create it with a header row
     if (!PlatformFile.FileExists(*FileName))
     {
-        bool bFileCreated = FFileHelper::SaveStringToFile(TEXT("Timestamp, VX, VY, VZ, VRX,VRY,VRZ,TH,ST,BR,LHX,LHY,LHZ,RHX,RHY,RHZ,HX,HY,HZ,HRX,HRY,HRZ\n"), *FileName);
+        bool bFileCreated = FFileHelper::SaveStringToFile(TEXT("Timestamp;VX;VY;VZ;VRX;VRY;VRZ;TH;ST;BR;LHX;LHY;LHZ;RHX;RHY;RHZ;HX;HY;HZ;HRX;HRY;HRZ\n"), *FileName);
 
         if (!bFileCreated)
         {
@@ -107,4 +107,23 @@ void UGameLogger::RenameLogFile(const FString& NewFileName)
     }
 
     FileName = NewFilePath;
+}
+void UGameLogger::SaveFullJSON(const FString& AbsoluteFilePath, const FString& JSONContent)
+{
+    if (JSONContent.IsEmpty())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("JSONContent is empty, nothing to save."));
+        return;
+    }
+
+    bool bSuccess = FFileHelper::SaveStringToFile(JSONContent, *AbsoluteFilePath);
+
+    if (bSuccess)
+    {
+        UE_LOG(LogTemp, Log, TEXT("JSON saved successfully to: %s"), *AbsoluteFilePath);
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("Failed to save JSON to: %s"), *AbsoluteFilePath);
+    }
 }
