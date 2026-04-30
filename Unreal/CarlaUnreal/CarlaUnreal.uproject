@@ -136,6 +136,10 @@
 		{
 			"Name": "CarlaVR_Vehicles",
 			"Enabled": true
+		},
+		{
+			"Name": "BlueprintFileUtils",
+			"Enabled": true
 		}
 	],
 	"TargetPlatforms": [

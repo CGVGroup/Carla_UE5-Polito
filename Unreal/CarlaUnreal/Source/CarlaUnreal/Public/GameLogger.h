@@ -21,8 +21,7 @@ public:
 
     /** Initializes the logger with a user ID and optional custom folder */
     UFUNCTION(BlueprintCallable, Category = "Logging")
-    void InitializeLogger(const FString& UserID, const FString& ScN, const FString& Displ, const FString& CustomFolder = TEXT("Logs"));
-
+void InitializeLogger(const FString& UserID, const FString& Veicolo, const FString& Avatar, const FString& Route, const FString& AbsoluteFolderPath);
     /** Logs a new data entry */
     UFUNCTION(BlueprintCallable, Category = "Logging")
     void LogData(const FString& Data);
@@ -38,4 +37,8 @@ public:
     /** Renames the log file */
     UFUNCTION(BlueprintCallable, Category = "Logging")
     void RenameLogFile(const FString& NewFileName);
+
+    /** Save JSON in String */
+    UFUNCTION(BlueprintCallable, Category = "Logging")
+    void SaveFullJSON(const FString& AbsoluteFilePath, const FString& JSONContent);
 };
