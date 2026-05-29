@@ -1,0 +1,2 @@
+C:/Carla_VR_2026/Carla_UE5-Polito/CMakeFiles/CMakeScratch/TryCompile-zzlo47/CMakeFiles/cmTC_6b0a6.dir
+C:/Carla_VR_2026/Carla_UE5-Polito/CMakeFiles/CMakeScratch/TryCompile-zzlo47/CMakeFiles/ALL_BUILD.dir
