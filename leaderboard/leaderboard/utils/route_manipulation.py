@@ -16,6 +16,10 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.local_planner import RoadOption
 
+_cached_grp = None
+_cached_grp_map_name = None
+_cached_grp_resolution = None
+
 
 def _location_to_gps(lat_ref, lon_ref, location):
     """
@@ -143,7 +147,16 @@ def interpolate_trajectory(waypoints_trajectory, hop_resolution=1.0):
         - hop_resolution: distance between the trajectory's waypoints
     """
 
-    grp = GlobalRoutePlanner(CarlaDataProvider.get_map(), hop_resolution)
+    global _cached_grp, _cached_grp_map_name, _cached_grp_resolution
+    map_obj = CarlaDataProvider.get_map()
+    map_name = map_obj.name
+    if (_cached_grp is None
+            or _cached_grp_map_name != map_name
+            or _cached_grp_resolution != hop_resolution):
+        _cached_grp = GlobalRoutePlanner(map_obj, hop_resolution)
+        _cached_grp_map_name = map_name
+        _cached_grp_resolution = hop_resolution
+    grp = _cached_grp
     # Obtain route plan
     lat_ref, lon_ref = _get_latlon_ref(CarlaDataProvider.get_world())
 

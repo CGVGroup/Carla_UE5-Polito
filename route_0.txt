@@ -1,0 +1,3 @@
+<waypoints>
+	<position x="1050.33" y="347.65" z="126.77" yaw="78.95"/>
+</waypoints>

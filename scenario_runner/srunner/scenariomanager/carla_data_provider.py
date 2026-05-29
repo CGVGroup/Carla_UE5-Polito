@@ -255,13 +255,19 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         """
         Set the world and world settings
         """
+        print("CarlaDataProvider: setting world")
         CarlaDataProvider._world = world
+        print("CarlaDataProvider: world set, preparing map and spawn points")
         CarlaDataProvider._sync_flag = world.get_settings().synchronous_mode
+        print("LALAL CarlaDataProvider: world set, sync mode is {}".format(CarlaDataProvider._sync_flag))
         CarlaDataProvider._map = world.get_map()
         CarlaDataProvider._blueprint_library = world.get_blueprint_library()
-        CarlaDataProvider._grp = GlobalRoutePlanner(CarlaDataProvider._map, 2.0)
-        CarlaDataProvider.generate_spawn_points()
+        CarlaDataProvider._grp = None # GlobalRoutePlanner(CarlaDataProvider._map, 2.0)
+        print("CarlaDataProvider: world set, sync mode is {}".format(CarlaDataProvider._sync_flag))
+        # CarlaDataProvider.generate_spawn_points()
+        print("CarlaDataProvider: world set, spawn points generated")
         CarlaDataProvider.prepare_map()
+        print("CarlaDataProvider: world set, spawn points generated and map prepared")
 
     @staticmethod
     def get_world():

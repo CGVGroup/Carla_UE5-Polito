@@ -236,9 +236,12 @@ class LeaderboardEvaluator(object):
         print("\033[1m> World loaded: {}\033[0m".format(self.world.get_map().name))
 
         self.world.reset_all_traffic_lights()
+        print("\033[1m> Traffic lights reset\033[0m")
         CarlaDataProvider.set_client(self.client)
         CarlaDataProvider.set_traffic_manager_port(args.traffic_manager_port)
+        print("\033[1m> CarlaDataProvider client and traffic manager port set\033[0m")
         CarlaDataProvider.set_world(self.world)
+        print("\033[1m> CarlaDataProvider configured\033[0m")
 
         # This must be here so that all route repetitions use the same 'unmodified' seed
         self.traffic_manager.set_random_device_seed(args.traffic_manager_seed)

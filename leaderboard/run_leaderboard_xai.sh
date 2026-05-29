@@ -6,9 +6,10 @@ export LEADERBOARD_ROOT=$(pwd)
 export TEAM_AGENT=$LEADERBOARD_ROOT/leaderboard/autoagents/npc_agent.py
 export SCENARIO_RUNNER_ROOT=/home/tda/Desktop/phd/code/scenario_runner
 export PYTHONPATH=$PYTHONPATH:${SCENARIO_RUNNER_ROOT}:${LEADERBOARD_ROOT}
-export ROUTES=$LEADERBOARD_ROOT/data/routes_xaiTown_short.xml
+export ROUTES=$LEADERBOARD_ROOT/data/routes_Town15_long3.xml
 export ROUTES_SUBSET=0
 export REPETITIONS=1
+echo $PYTHONPATH
 
 export DEBUG_CHALLENGE=1
 export CHALLENGE_TRACK_CODENAME=SENSORS
@@ -29,5 +30,5 @@ python3 ${LEADERBOARD_ROOT}/leaderboard/leaderboard_evaluator.py \
 --agent-config=${TEAM_CONFIG} \
 --debug=${DEBUG_CHALLENGE} \
 --record=${RECORD_PATH} \
---host=158.109.9.49 \
+# --host=158.109.9.49 \
 # --resume=${RESUME}

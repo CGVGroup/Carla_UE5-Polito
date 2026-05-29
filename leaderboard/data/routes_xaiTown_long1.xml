@@ -6,7 +6,7 @@
         </weathers>
         <indications lang="es"></indications>
         <waypoints>
-            <!-- <position x="-145.53" y="-326.38" z="0.00" />
+            <position x="-145.53" y="-326.38" z="0.00" />
             <position x="-213.58" y="-326.39" z="0.00" />
             <position x="-325.95" y="-326.40" z="0.00" />
             <position x="-379.55" y="-277.24" z="0.00" />
@@ -20,7 +20,7 @@
             <position x="-128.28" y="36.16" z="0.00" />
             <position x="-159.26" y="71.21" z="0.00" />
             <position x="-206.71" y="71.23" z="0.00" />
-            <position x="-248.92" y="48.66" z="0.00" /> -->
+            <position x="-248.92" y="48.66" z="0.00" />
             <position x="-252.68" y="15.56" z="0.00" />
             <position x="-252.67" y="-52.49" z="0.00" />
             <position x="-252.64" y="-132.40" z="0.00" />

@@ -33,7 +33,9 @@ class GlobalRoutePlanner(object):
         self._previous_decision = RoadOption.VOID
 
         # Build the graph
+        print('Building the route planner graph...')
         self._build_topology()
+        print('Topology built with %d segments, building graph...'%len(self._topology))
         self._build_graph()
         self._find_loose_ends()
         self._lane_change_link()
@@ -96,6 +98,7 @@ class GlobalRoutePlanner(object):
         self._topology = []
         # Retrieving waypoints to construct a detailed topology
         for segment in self._wmap.get_topology():
+            print('Processing segment %d/%d'%(len(self._topology)+1, len(self._wmap.get_topology())), end='\r')
             wp1, wp2 = segment[0], segment[1]
             l1, l2 = wp1.transform.location, wp2.transform.location
             # Rounding off to avoid floating point imprecision
@@ -109,12 +112,14 @@ class GlobalRoutePlanner(object):
             if wp1.transform.location.distance(endloc) > self._sampling_resolution:
                 w = wp1.next(self._sampling_resolution)[0]
                 while w.transform.location.distance(endloc) > self._sampling_resolution:
+                    print('Processing segment %d/%d, waypoint %d'%(len(self._topology)+1, len(self._wmap.get_topology()), len(seg_dict['path'])), end='\r')
                     seg_dict['path'].append(w)
                     next_ws = w.next(self._sampling_resolution)
                     if len(next_ws) == 0:
                         break
                     w = next_ws[0]
             else:
+                print('Processing segment %d/%d, waypoint %d'%(len(self._topology)+1, len(self._wmap.get_topology()), len(seg_dict['path'])), end='\r')
                 next_wps = wp1.next(self._sampling_resolution)
                 if len(next_wps) == 0:
                     continue
