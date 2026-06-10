@@ -1,21 +1,17 @@
 ﻿# -*- coding: utf-8 -*-
 """
-filtra_telemetria.py  —  v6  (soglia angolare dal CSV)
+filtra_telemetria.py  —  v7
 
 Piazza waypoint in base a quanto RUOTA effettivamente il veicolo:
-  - Accumula il delta di yaw metro per metro mentre guidi
-  - Appena lo yaw accumulato supera SOGLIA_GRADI mette un waypoint (= curva rilevata)
-  - In rettilineo mette comunque un waypoint ogni MAX_DIST_RETTILINEO metri
-  - Se i candidati sono piu di MAX_WAYPOINTS, li riduce tenendo
-    quelli piu "importanti" (piu alta curvatura nel loro bucket)
+  - Accumula il delta di yaw mentre guidi
+  - Mette un WP ogni volta che lo yaw supera SOGLIA_GRADI_CURVA (curve dense)
+  - Mette comunque un WP ogni MAX_DIST_RETTILINEO metri (rettilinei sparsi)
+  - Con 2-3 CSV calcola la media delle traiettorie prima di campionare
 
-Vantaggi rispetto alle versioni precedenti:
-  - Non dipende dallo XODR per trovare le curve: le rileva direttamente
-    dal comportamento reale del veicolo nel CSV
-  - In una curva a 30° mette tanti piu punti che in una curva a 5°
-  - Funziona anche se il CSV copre solo una parte del tracciato
-
-Con 2-3 CSV: calcola la media delle traiettorie prima di campionare.
+NOVITA v7: rileva automaticamente il formato numerico del CSV
+  - Formato italiano  (virgola=decimale, punto=migliaia): es. 28.774,918
+  - Formato anglosassone (punto=decimale, virgola=migliaia): es. 34,554.355
+  Funziona su entrambi senza modifiche manuali.
 
 Unita dati CSV (Carla/Unreal):
   - PX, PY, PZ : cm  (standard Unreal Engine)
@@ -32,80 +28,107 @@ import statistics
 # PARAMETRI — modifica solo questi
 # =============================================================================
 
-FILE_CSV_1  = r"C:\Dev\CarlaUE5\Unreal\CarlaUnreal\Source\CarlaUnreal\FiltroTelemetria\1_Demo_Male_VirtualCarpet_2026-06-08_15-25-09.csv"
-FILE_CSV_2  = r""
-FILE_CSV_3  = r""
+FILE_CSV_1  = r"C:\Users\micha\Downloads\1_Demo_Male_NoVirtualCarpet_2026-06-09_11-59-27.csv"
+FILE_CSV_2  = r"C:\Users\micha\Downloads\1_Demo_Male_NoVirtualCarpet_2026-06-09_11-54-27.csv"
+FILE_CSV_3  = r"C:\Users\micha\Downloads\1_Demo_Male_NoVirtualCarpet_2026-06-09_11-47-56.csv"
 
 FILE_OUTPUT = r"C:\Dev\CarlaUE5\Unreal\CarlaUnreal\Source\CarlaUnreal\FiltroTelemetria\waypoint_unreal.json"
 
 SOGLIA_PARTENZA_METRI = 40.0   # ignora i primi N metri (veicolo fermo)
-MAX_WAYPOINTS         = 80     # numero esatto di waypoint nel JSON
+MAX_WAYPOINTS         = 80     # numero massimo di waypoint nel JSON
 
 # Soglia angolare: mette un WP ogni volta che lo yaw cambia di questi gradi
 # Valore basso = piu WP nelle curve  |  valore alto = meno WP nelle curve
-# Consigliato: 3-5 gradi
-SOGLIA_GRADI_CURVA = 10.0
+SOGLIA_GRADI_CURVA  = 10.0   # gradi
 
 # Distanza massima in rettilineo senza waypoint
-# Garantisce che non ci siano "buchi" troppo lunghi anche in rettilineo
-MAX_DIST_RETTILINEO = 200.0   # metri
+MAX_DIST_RETTILINEO = 200.0  # metri
 
-# Distanza minima tra due waypoint consecutivi (evita punti sovrapposti)
-MIN_DIST_WP = 20   # metri
+# Distanza minima tra due waypoint consecutivi (evita duplicati in curva)
+MIN_DIST_WP         = 20.0   # metri
 
 # =============================================================================
 
 
-def parse_numero(v):
-    """Converte formato italiano: '29.092,049' -> 29092.049"""
+def rileva_formato(file_csv):
+    """
+    Legge le prime righe del CSV e rileva il formato numerico:
+      'en' = anglosassone (punto=decimale, virgola=migliaia): 34,554.355
+      'it' = italiano     (virgola=decimale, punto=migliaia): 28.774,918
+    """
+    with open(file_csv, 'r', encoding='utf-8') as f:
+        righe = list(csv.DictReader(f, delimiter=';'))[:8]
+    en = 0; it = 0
+    for row in righe:
+        for val in row.values():
+            if not val: continue
+            v = str(val).strip()
+            if ',' in v and '.' in v:
+                if v.rfind('.') > v.rfind(','): en += 1   # punto dopo virgola = decimale EN
+                else:                           it += 1   # virgola dopo punto  = decimale IT
+    return 'en' if en >= it else 'it'
+
+
+def parse_valore(v, fmt):
+    """Converte un valore stringa nel formato rilevato."""
     if not v: return 0.0
-    try: return float(str(v).strip().replace('.','').replace(',','.'))
-    except: return 0.0
+    v = str(v).strip()
+    try:
+        if fmt == 'en':
+            return float(v.replace(',', ''))              # rimuove sep. migliaia
+        else:
+            return float(v.replace('.', '').replace(',', '.'))  # italiano
+    except:
+        return 0.0
+
 
 def dist3d_m(p1, p2):
     """Distanza euclidea in METRI tra due dict con PX/PY/PZ in cm."""
     return math.sqrt(
-        (p1['PX']-p2['PX'])**2 +
-        (p1['PY']-p2['PY'])**2 +
-        (p1['PZ']-p2['PZ'])**2
+        (p1['PX'] - p2['PX'])**2 +
+        (p1['PY'] - p2['PY'])**2 +
+        (p1['PZ'] - p2['PZ'])**2
     ) / 100.0
+
 
 def delta_yaw(y1, y2):
     """Delta angolare minimo tra due yaw in gradi."""
-    d = abs(y2-y1) % 360
-    return d if d <= 180 else 360-d
+    d = abs(y2 - y1) % 360
+    return d if d <= 180 else 360 - d
+
 
 def media_angoli(angoli):
     """Media circolare corretta per angoli vicini a +/-180."""
-    sin_s = sum(math.sin(math.radians(a)) for a in angoli)
-    cos_s = sum(math.cos(math.radians(a)) for a in angoli)
-    return math.degrees(math.atan2(sin_s, cos_s))
+    ss = sum(math.sin(math.radians(a)) for a in angoli)
+    cs = sum(math.cos(math.radians(a)) for a in angoli)
+    return math.degrees(math.atan2(ss, cs))
 
 
 # =============================================================================
-# STEP 1: lettura CSV con auto-rilevazione struttura
+# STEP 1: lettura CSV
 # =============================================================================
 def carica_csv(file_csv):
+    fmt = rileva_formato(file_csv)
     tutti = []
     with open(file_csv, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f, delimiter=';')
         for row in reader:
             try:
                 tutti.append({
-                    'PX':    parse_numero(row.get('PX',  0)),
-                    'PY':    parse_numero(row.get('PY',  0)),
-                    'PZ':    parse_numero(row.get('PZ',  0)),
-                    'Yaw':   parse_numero(row.get('VRZ', 0)),
+                    'PX':    parse_valore(row.get('PX',  0), fmt),
+                    'PY':    parse_valore(row.get('PY',  0), fmt),
+                    'PZ':    parse_valore(row.get('PZ',  0), fmt),
+                    'Yaw':   parse_valore(row.get('VRZ', 0), fmt),
                     'Speed': math.sqrt(
-                        parse_numero(row.get('VX', 0))**2 +
-                        parse_numero(row.get('VY', 0))**2 +
-                        parse_numero(row.get('VZ', 0))**2
+                        parse_valore(row.get('VX', 0), fmt)**2 +
+                        parse_valore(row.get('VY', 0), fmt)**2 +
+                        parse_valore(row.get('VZ', 0), fmt)**2
                     )
                 })
             except Exception:
                 continue
 
-    # Auto-rileva CSV con due veicoli alternati (es. CSV di test)
+    # Auto-rileva CSV con due veicoli alternati
     campione = [dist3d_m(tutti[i], tutti[i+1]) for i in range(min(200, len(tutti)-1))]
     mediana  = statistics.median(campione)
     dati = tutti[::2] if mediana > 2.0 else tutti
@@ -116,7 +139,7 @@ def carica_csv(file_csv):
 
     nome = file_csv.split('\\')[-1].split('/')[-1]
     tipo = "due veicoli -> righe pari" if mediana > 2.0 else "CSV pulito"
-    print(f"    {nome}: {len(dati)} frame, {dist_prog[-1]:.0f}m  [{tipo}]")
+    print(f"    {nome}: {len(dati)} frame, {dist_prog[-1]:.0f}m  [fmt={fmt}, {tipo}]")
     return dati, dist_prog
 
 
@@ -141,7 +164,7 @@ def normalizza_e_media(lista_csv):
             for i in range(idx_start, len(dati)):
                 d = abs(dist_prog[i] - target)
                 if d < best_d: best_d=d; best_idx=i
-                elif dist_prog[i] > target+step*2: break
+                elif dist_prog[i] > target + step*2: break
             campioni.append(dati[best_idx])
         normalizzati.append(campioni)
 
@@ -173,30 +196,19 @@ def campiona_angolare(dati, dist_prog):
     1a passata: genera candidati ogni SOGLIA_GRADI_CURVA di rotazione
                 o ogni MAX_DIST_RETTILINEO metri.
     2a passata: se i candidati sono piu di MAX_WAYPOINTS, riduce
-                a MAX_WAYPOINTS tenendo i piu 'importanti' (piu curvi)
-                in ogni bucket di distanza uniforme.
+                tenendo i piu 'importanti' (piu curvi) in ogni bucket.
     """
-    # Trova indice di partenza
     idx_start = 0
     for i, d in enumerate(dist_prog):
         if d >= SOGLIA_PARTENZA_METRI:
-            idx_start = i
-            break
+            idx_start = i; break
 
-    # --- 1a passata: genera candidati ---
-    candidati = [{
-        'idx':      idx_start,
-        'yaw_acc':  0.0,
-        'dist_acc': 0.0,
-    }]
-    yaw_acc  = 0.0
-    dist_acc = 0.0
+    candidati = [{'idx': idx_start, 'yaw_acc': 0.0, 'dist_acc': 0.0}]
+    yaw_acc = 0.0; dist_acc = 0.0
 
     for i in range(idx_start + 1, len(dati)):
-        dy = delta_yaw(dati[i-1]['Yaw'], dati[i]['Yaw'])
-        dd = dist3d_m(dati[i-1], dati[i])
-        yaw_acc  += dy
-        dist_acc += dd
+        yaw_acc  += delta_yaw(dati[i-1]['Yaw'], dati[i]['Yaw'])
+        dist_acc += dist3d_m(dati[i-1], dati[i])
 
         metti = False
         if yaw_acc >= SOGLIA_GRADI_CURVA and dist_acc >= MIN_DIST_WP:
@@ -205,40 +217,27 @@ def campiona_angolare(dati, dist_prog):
             metti = True
 
         if metti:
-            candidati.append({
-                'idx':      i,
-                'yaw_acc':  yaw_acc,
-                'dist_acc': dist_acc,
-            })
-            yaw_acc  = 0.0
-            dist_acc = 0.0
+            candidati.append({'idx': i, 'yaw_acc': yaw_acc, 'dist_acc': dist_acc})
+            yaw_acc = 0.0; dist_acc = 0.0
 
     print(f"  Candidati angolari: {len(candidati)}")
 
-    # --- 2a passata: riduci a MAX_WAYPOINTS se necessario ---
-    if len(candidati) <= MAX_WAYPOINTS:
-        selezionati = candidati
-    else:
-        # Calcola curvatura (gradi/metro) per ogni candidato
+    if len(candidati) > MAX_WAYPOINTS:
         for c in candidati:
             c['curv'] = c['yaw_acc'] / max(c['dist_acc'], 0.001)
-
-        # Divide i candidati in MAX_WAYPOINTS bucket uniformi per distanza
-        # In ogni bucket mantiene il candidato con la curvatura piu alta
         bucket_size = len(candidati) / MAX_WAYPOINTS
         selezionati = []
         for k in range(MAX_WAYPOINTS):
             start_b = int(k * bucket_size)
             end_b   = int((k+1) * bucket_size)
             bucket  = candidati[start_b : max(end_b, start_b+1)]
-            best    = max(bucket, key=lambda c: c['curv'])
-            selezionati.append(best)
+            selezionati.append(max(bucket, key=lambda c: c['curv']))
+        candidati = selezionati
 
-    print(f"  WP selezionati    : {len(selezionati)}")
+    print(f"  WP selezionati    : {len(candidati)}")
 
-    # Costruisci output
     waypoints = []
-    for k, cand in enumerate(selezionati):
+    for k, cand in enumerate(candidati):
         p = dati[cand['idx']]
         waypoints.append({
             "Name":        f"WP_{k}",
@@ -257,7 +256,7 @@ def campiona_angolare(dati, dist_prog):
 # MAIN
 # =============================================================================
 def elabora():
-    print("=== filtra_telemetria.py  v6 (soglia angolare) ===\n")
+    print("=== filtra_telemetria.py  v7 ===\n")
 
     file_csv_list = [f for f in [FILE_CSV_1, FILE_CSV_2, FILE_CSV_3] if f.strip()]
     if not file_csv_list:
@@ -276,7 +275,7 @@ def elabora():
     else:
         dati_fin, dist_fin = normalizza_e_media(lista_csv)
 
-    print(f"\n[3/3] Campiono con soglia angolare {SOGLIA_GRADI_CURVA}° / {MAX_DIST_RETTILINEO}m rettilineo...")
+    print(f"\n[3/3] Campiono con soglia {SOGLIA_GRADI_CURVA}° / {MAX_DIST_RETTILINEO}m rettilineo...")
     waypoints = campiona_angolare(dati_fin, dist_fin)
 
     with open(FILE_OUTPUT, 'w', encoding='utf-8') as f:
