@@ -1,0 +1,25 @@
+{
+  "vehicle": "mercedes_vr",
+  "timestamp": "20260616_142001",
+  "test": "throttle_step",
+  "runs": {
+    "30kmh": {
+      "peak_ax_ms2": 4.099,
+      "peak_jerk_ms3": 46.711,
+      "t_peak_ax_s": 0.13
+    },
+    "60kmh": {
+      "peak_ax_ms2": 2.368,
+      "peak_jerk_ms3": 26.257,
+      "t_peak_ax_s": 0.13
+    },
+    "80kmh": {
+      "peak_ax_ms2": 2.368,
+      "peak_jerk_ms3": 26.263,
+      "t_peak_ax_s": 0.13
+    }
+  },
+  "spawn_x": 507.76,
+  "spawn_y": 288.97,
+  "spawn_yaw_deg": -64.02
+}

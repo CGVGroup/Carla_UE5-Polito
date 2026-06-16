@@ -1,0 +1,127 @@
+{
+  "vehicle": "tesla_vr",
+  "timestamp": "20260616_152646",
+  "test": "iso7401",
+  "speed_kmh": 100.0,
+  "rise_time_ms": 150.0,
+  "n_reps_per_direction": 3,
+  "amplitude_results": {
+    "Ay_2.0ms2": {
+      "ay_target_ms2": 2.0,
+      "per_direction": {
+        "left": {
+          "swa_calib_deg": 6.041,
+          "swa_calib_norm": 0.16326,
+          "R_target_m": 385.8,
+          "R_meas_calib_m": 391.42,
+          "K_at_target": 29.69,
+          "ay_ss_calib_g": 0.203,
+          "ay_target_reached": true,
+          "ay_ss_step_mean_g": 0.215,
+          "T90_ms_mean": 225.0,
+          "T90_ms_sd": 0.0,
+          "gain_mean": 0.7104,
+          "gain_sd": 0.0,
+          "n_reps": 3
+        },
+        "right": {
+          "swa_calib_deg": -6.035,
+          "swa_calib_norm": -0.16311,
+          "R_target_m": 385.8,
+          "R_meas_calib_m": 390.08,
+          "K_at_target": 29.67,
+          "ay_ss_calib_g": -0.203,
+          "ay_target_reached": true,
+          "ay_ss_step_mean_g": -0.215,
+          "T90_ms_mean": 225.0,
+          "T90_ms_sd": 0.0,
+          "gain_mean": 0.7135,
+          "gain_sd": 0.0,
+          "n_reps": 3
+        }
+      },
+      "T90_ms_pooled_mean": 225.0,
+      "yaw_gain_pooled_mean": 0.712,
+      "response_discriminable": true
+    },
+    "Ay_4.0ms2": {
+      "ay_target_ms2": 4.0,
+      "per_direction": {
+        "left": {
+          "swa_calib_deg": 8.666,
+          "swa_calib_norm": 0.23423,
+          "R_target_m": 192.9,
+          "R_meas_calib_m": 195.07,
+          "K_at_target": 21.27,
+          "ay_ss_calib_g": 0.408,
+          "ay_target_reached": true,
+          "ay_ss_step_mean_g": 0.443,
+          "T90_ms_mean": 225.0,
+          "T90_ms_sd": 0.0,
+          "gain_mean": 1.0233,
+          "gain_sd": 0.0,
+          "n_reps": 3
+        },
+        "right": {
+          "swa_calib_deg": -8.66,
+          "swa_calib_norm": -0.23405,
+          "R_target_m": 192.9,
+          "R_meas_calib_m": 194.75,
+          "K_at_target": 21.25,
+          "ay_ss_calib_g": -0.407,
+          "ay_target_reached": true,
+          "ay_ss_step_mean_g": -0.442,
+          "T90_ms_mean": 225.0,
+          "T90_ms_sd": 0.0,
+          "gain_mean": 1.0251,
+          "gain_sd": 0.0,
+          "n_reps": 3
+        }
+      },
+      "T90_ms_pooled_mean": 225.0,
+      "yaw_gain_pooled_mean": 1.0242,
+      "response_discriminable": true
+    },
+    "Ay_6.0ms2": {
+      "ay_target_ms2": 6.0,
+      "per_direction": {
+        "left": {
+          "swa_calib_deg": 10.569,
+          "swa_calib_norm": 0.28565,
+          "R_target_m": 128.6,
+          "R_meas_calib_m": 129.85,
+          "K_at_target": 17.28,
+          "ay_ss_calib_g": 0.612,
+          "ay_target_reached": true,
+          "ay_ss_step_mean_g": 0.659,
+          "T90_ms_mean": 235.0,
+          "T90_ms_sd": 0.0,
+          "gain_mean": 1.2514,
+          "gain_sd": 0.0,
+          "n_reps": 3
+        },
+        "right": {
+          "swa_calib_deg": -10.606,
+          "swa_calib_norm": -0.28664,
+          "R_target_m": 128.6,
+          "R_meas_calib_m": 129.44,
+          "K_at_target": 17.32,
+          "ay_ss_calib_g": -0.612,
+          "ay_target_reached": true,
+          "ay_ss_step_mean_g": -0.664,
+          "T90_ms_mean": 235.0,
+          "T90_ms_sd": 0.0,
+          "gain_mean": 1.2579,
+          "gain_sd": 0.0,
+          "n_reps": 3
+        }
+      },
+      "T90_ms_pooled_mean": 235.0,
+      "yaw_gain_pooled_mean": 1.2547,
+      "response_discriminable": true
+    }
+  },
+  "spawn_x": -510.58,
+  "spawn_y": 427.62,
+  "spawn_yaw_deg": -100.36
+}

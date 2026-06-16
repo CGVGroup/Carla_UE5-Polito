@@ -1,0 +1,90 @@
+{
+  "vehicle": "tesla_vr",
+  "timestamp": "20260616_152953",
+  "test": "iso3888_proxy",
+  "runs": {
+    "50kmh": {
+      "SDLP_m": 0.9847,
+      "peak_psi_dot": 0.2887,
+      "peak_Ay_g": 0.466,
+      "unstable": false
+    },
+    "55kmh": {
+      "SDLP_m": 0.5282,
+      "peak_psi_dot": 0.2953,
+      "peak_Ay_g": 0.51,
+      "unstable": false
+    },
+    "60kmh": {
+      "SDLP_m": 0.7432,
+      "peak_psi_dot": 0.2989,
+      "peak_Ay_g": 0.523,
+      "unstable": false
+    },
+    "65kmh": {
+      "SDLP_m": 0.6966,
+      "peak_psi_dot": 0.3008,
+      "peak_Ay_g": 0.579,
+      "unstable": false
+    },
+    "70kmh": {
+      "SDLP_m": 0.8717,
+      "peak_psi_dot": 0.3005,
+      "peak_Ay_g": 0.604,
+      "unstable": false
+    },
+    "75kmh": {
+      "SDLP_m": 1.1147,
+      "peak_psi_dot": 0.3004,
+      "peak_Ay_g": 0.623,
+      "unstable": false
+    },
+    "80kmh": {
+      "SDLP_m": 1.7132,
+      "peak_psi_dot": 0.2994,
+      "peak_Ay_g": 0.657,
+      "unstable": false
+    },
+    "85kmh": {
+      "SDLP_m": 1.6587,
+      "peak_psi_dot": 0.2977,
+      "peak_Ay_g": 0.688,
+      "unstable": false
+    },
+    "90kmh": {
+      "SDLP_m": 1.8642,
+      "peak_psi_dot": 0.2949,
+      "peak_Ay_g": 0.714,
+      "unstable": false
+    },
+    "95kmh": {
+      "SDLP_m": 2.7431,
+      "peak_psi_dot": 0.2918,
+      "peak_Ay_g": 0.731,
+      "unstable": false
+    },
+    "100kmh": {
+      "SDLP_m": 3.0048,
+      "peak_psi_dot": 0.2884,
+      "peak_Ay_g": 0.754,
+      "unstable": false
+    },
+    "105kmh": {
+      "SDLP_m": 3.3028,
+      "peak_psi_dot": 0.2846,
+      "peak_Ay_g": 0.77,
+      "unstable": false
+    },
+    "110kmh": {
+      "SDLP_m": 3.4798,
+      "peak_psi_dot": 0.2813,
+      "peak_Ay_g": 0.782,
+      "unstable": false
+    }
+  },
+  "steer_freq_hz": 0.8,
+  "steer_amplitude_norm": 0.4,
+  "spawn_x": -510.58,
+  "spawn_y": 427.62,
+  "spawn_yaw_deg": -100.36
+}

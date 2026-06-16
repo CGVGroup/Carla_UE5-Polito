@@ -1,0 +1,30 @@
+{
+  "vehicle": "tesla_vr",
+  "timestamp": "20260616_152137",
+  "test": "iso4138",
+  "method": "constant_radius_M1",
+  "circle_control_mode": "pi",
+  "radius_target_m": 50.0,
+  "radius_meas_mean_left_m": 54.85,
+  "radius_meas_mean_right_m": 54.85,
+  "understeer_gradient_K_left": 2.73,
+  "understeer_gradient_K_right": 2.73,
+  "understeer_gradient_K_pooled": 2.73,
+  "K_fit_R2_left": 0.997,
+  "K_fit_R2_right": 0.997,
+  "K_fit_window_g": [
+    0.1,
+    0.4
+  ],
+  "K_fit_n_left": 13,
+  "K_fit_n_right": 13,
+  "K_left_right_asymmetric": false,
+  "max_Ay_g": 0.891,
+  "n_plateaus_left": 36,
+  "n_plateaus_right": 36,
+  "circle_hold_kp": 1.5,
+  "circle_hold_ki": 0.6,
+  "spawn_x": -510.58,
+  "spawn_y": 427.62,
+  "spawn_yaw_deg": -100.36
+}
