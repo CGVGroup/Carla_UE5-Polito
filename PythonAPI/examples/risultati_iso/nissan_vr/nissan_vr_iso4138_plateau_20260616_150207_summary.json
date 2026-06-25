@@ -1,0 +1,30 @@
+{
+  "vehicle": "nissan_vr",
+  "timestamp": "20260616_150207",
+  "test": "iso4138",
+  "method": "constant_radius_M1",
+  "circle_control_mode": "pi",
+  "radius_target_m": 50.0,
+  "radius_meas_mean_left_m": 53.73,
+  "radius_meas_mean_right_m": 53.71,
+  "understeer_gradient_K_left": 3.28,
+  "understeer_gradient_K_right": 3.28,
+  "understeer_gradient_K_pooled": 3.28,
+  "K_fit_R2_left": 0.995,
+  "K_fit_R2_right": 0.995,
+  "K_fit_window_g": [
+    0.1,
+    0.4
+  ],
+  "K_fit_n_left": 13,
+  "K_fit_n_right": 13,
+  "K_left_right_asymmetric": false,
+  "max_Ay_g": 0.795,
+  "n_plateaus_left": 34,
+  "n_plateaus_right": 34,
+  "circle_hold_kp": 1.5,
+  "circle_hold_ki": 0.6,
+  "spawn_x": -141.32,
+  "spawn_y": 55.89,
+  "spawn_yaw_deg": -64.34
+}

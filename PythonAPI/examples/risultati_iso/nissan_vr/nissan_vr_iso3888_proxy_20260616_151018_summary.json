@@ -1,0 +1,90 @@
+{
+  "vehicle": "nissan_vr",
+  "timestamp": "20260616_151018",
+  "test": "iso3888_proxy",
+  "runs": {
+    "50kmh": {
+      "SDLP_m": 0.9953,
+      "peak_psi_dot": 0.3185,
+      "peak_Ay_g": 0.484,
+      "unstable": false
+    },
+    "55kmh": {
+      "SDLP_m": 0.2896,
+      "peak_psi_dot": 0.3231,
+      "peak_Ay_g": 0.527,
+      "unstable": false
+    },
+    "60kmh": {
+      "SDLP_m": 0.2871,
+      "peak_psi_dot": 0.3253,
+      "peak_Ay_g": 0.566,
+      "unstable": false
+    },
+    "65kmh": {
+      "SDLP_m": 0.2304,
+      "peak_psi_dot": 0.3262,
+      "peak_Ay_g": 0.602,
+      "unstable": false
+    },
+    "70kmh": {
+      "SDLP_m": 0.3018,
+      "peak_psi_dot": 0.327,
+      "peak_Ay_g": 0.636,
+      "unstable": false
+    },
+    "75kmh": {
+      "SDLP_m": 0.8742,
+      "peak_psi_dot": 0.327,
+      "peak_Ay_g": 0.667,
+      "unstable": false
+    },
+    "80kmh": {
+      "SDLP_m": 0.5854,
+      "peak_psi_dot": 0.3271,
+      "peak_Ay_g": 0.714,
+      "unstable": false
+    },
+    "85kmh": {
+      "SDLP_m": 0.5778,
+      "peak_psi_dot": 0.3271,
+      "peak_Ay_g": 0.716,
+      "unstable": false
+    },
+    "90kmh": {
+      "SDLP_m": 0.3723,
+      "peak_psi_dot": 0.327,
+      "peak_Ay_g": 0.717,
+      "unstable": false
+    },
+    "95kmh": {
+      "SDLP_m": 0.5949,
+      "peak_psi_dot": 0.3271,
+      "peak_Ay_g": 0.717,
+      "unstable": false
+    },
+    "100kmh": {
+      "SDLP_m": 0.6587,
+      "peak_psi_dot": 0.327,
+      "peak_Ay_g": 0.717,
+      "unstable": false
+    },
+    "105kmh": {
+      "SDLP_m": 0.668,
+      "peak_psi_dot": 0.327,
+      "peak_Ay_g": 0.717,
+      "unstable": false
+    },
+    "110kmh": {
+      "SDLP_m": 0.6557,
+      "peak_psi_dot": 0.327,
+      "peak_Ay_g": 0.717,
+      "unstable": false
+    }
+  },
+  "steer_freq_hz": 0.8,
+  "steer_amplitude_norm": 0.4,
+  "spawn_x": -141.32,
+  "spawn_y": 55.89,
+  "spawn_yaw_deg": -64.34
+}

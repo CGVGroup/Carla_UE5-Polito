@@ -34,7 +34,7 @@ void UGameLogger::InitializeLogger(const FString& UserID, const FString& Veicolo
     // Ensure the file exists, or create it with a header row
     if (!PlatformFile.FileExists(*FileName))
     {
-        bool bFileCreated = FFileHelper::SaveStringToFile(TEXT("Timestamp;VX;VY;VZ;VRX;VRY;VRZ;TH;ST;BR;LHX;LHY;LHZ;RHX;RHY;RHZ;HX;HY;HZ;HRX;HRY;HRZ\n"), *FileName);
+        bool bFileCreated = FFileHelper::SaveStringToFile(TEXT("Timestamp;VX;VY;VZ;VRX;VRY;VRZ;TH;ST;BR;LHX;LHY;LHZ;RHX;RHY;RHZ;HX;HY;HZ;HRX;HRY;HRZ;DEV;LAMBDAR;LAMBDAF;BALANCEGRADIENT;CURVEDIRECTION;PX;PY;PZ;TS\n"), *FileName);
 
         if (!bFileCreated)
         {

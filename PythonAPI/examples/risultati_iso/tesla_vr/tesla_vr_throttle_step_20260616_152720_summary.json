@@ -1,0 +1,25 @@
+{
+  "vehicle": "tesla_vr",
+  "timestamp": "20260616_152720",
+  "test": "throttle_step",
+  "runs": {
+    "30kmh": {
+      "peak_ax_ms2": 5.844,
+      "peak_jerk_ms3": 83.837,
+      "t_peak_ax_s": 0.26
+    },
+    "60kmh": {
+      "peak_ax_ms2": 5.724,
+      "peak_jerk_ms3": 83.841,
+      "t_peak_ax_s": 0.25
+    },
+    "80kmh": {
+      "peak_ax_ms2": 5.347,
+      "peak_jerk_ms3": 79.858,
+      "t_peak_ax_s": 0.22
+    }
+  },
+  "spawn_x": -510.58,
+  "spawn_y": 427.62,
+  "spawn_yaw_deg": -100.36
+}
