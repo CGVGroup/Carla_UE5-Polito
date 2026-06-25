@@ -9,7 +9,7 @@
 """Allows controlling a vehicle with a keyboard."""
 
 """
-Welcome to CARLA manual control (Vivace VR / RGB camera only).
+Welcome to CARLA manual control (tesla VR / RGB camera only).
 
 Use ARROWS or WASD keys for control.
 
@@ -921,7 +921,7 @@ def game_loop(args):
 
 
 def main():
-    argparser = argparse.ArgumentParser(description='CARLA Manual Control Client - Vivace VR')
+    argparser = argparse.ArgumentParser(description='CARLA Manual Control Client - tesla VR')
     argparser.add_argument(
         '-v', '--verbose', action='store_true', dest='debug',
         help='print debug information')
@@ -938,8 +938,8 @@ def main():
         '--res', metavar='WIDTHxHEIGHT', default='1280x720',
         help='window resolution (default: 1280x720)')
     argparser.add_argument(
-        '--filter', metavar='PATTERN', default='vehicle.vivace.vr',
-        help='actor filter (default: "vehicle.vivace.vr")')
+        '--filter', metavar='PATTERN', default='vehicle.tesla.vr',
+        help='actor filter (default: "vehicle.tesla.vr")')
     argparser.add_argument(
         '--generation', metavar='G', default='All',
         help='restrict to certain actor generation (values: "2","3","4","All" - default: "All")')

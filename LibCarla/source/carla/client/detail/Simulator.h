@@ -775,10 +775,10 @@ namespace detail {
       return _client.GetEpisodeSettings();
     }*/
 
-    /*rpc::Actor GetDashboard() const {
+    rpc::Actor GetDashboard() const {
       return _client.GetDashboard();
 	}
-
+    /*
     SharedPtr<Actor> GetDashboard() {
         return MakeActor(_client.GetDashboard());
     }*/
