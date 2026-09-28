@@ -428,7 +428,7 @@ namespace detail {
 
     void UpdateDayNightCycle(const bool active) const;
 
-    //carla::rpc::Actor GetDashboard() const;
+    carla::rpc::Actor GetDashboard() const;
 
     void SetControlValuesDashboard(float speed, float steer) const;
 

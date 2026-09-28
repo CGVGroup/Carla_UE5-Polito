@@ -57,7 +57,7 @@ public:
   }
 
   carla::rpc::Actor GetDashboard() const {
-    //return <carla::rpc::Actor>DashboardComponent;
+    // my solution- discarded  return <carla::rpc::Actor>DashboardComponent;
       return Episode->SerializeActor(DashboardComponent);
   }
 

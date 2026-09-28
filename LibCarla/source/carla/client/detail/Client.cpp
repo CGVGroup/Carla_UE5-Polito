@@ -692,15 +692,9 @@ namespace detail {
   }
 
 
-  /*  
-  EXPL
-  rpc::Actor Client::GetSpectator() {
-    return _pimpl->CallAndWait<carla::rpc::Actor>("get_spectator");
-  }
-
   rpc::Actor Client::GetDashboard() const {
 	  return _pimpl->CallAndWait<carla::rpc::Actor>("get_dashboard");
-  }*/
+  }
 
   void Client::SetControlValuesDashboard(float speed, float steer) const {
 	_pimpl->AsyncCall("set_control_values_dashboard", speed, steer);

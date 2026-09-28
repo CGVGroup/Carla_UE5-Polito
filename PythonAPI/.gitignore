@@ -1,6 +1,7 @@
 dist/
 build/
 dependencies/
+examples/vdxvc_characterization
 
 pyproject.toml
 *.pyd

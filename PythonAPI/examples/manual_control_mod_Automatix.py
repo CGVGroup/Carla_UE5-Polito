@@ -255,6 +255,7 @@ class World(object):
         cam_pos_index = self.camera_manager.transform_index if self.camera_manager is not None else 0
         # Get a random blueprint.
         blueprint_list = get_actor_blueprints(self.world, self._actor_filter, self._actor_generation)
+        print(blueprint_list)
         if not blueprint_list:
             raise ValueError("Couldn't find any blueprints with the specified filters")
         blueprint = random.choice(blueprint_list)
@@ -1348,7 +1349,7 @@ def main():
         '--res', metavar='WIDTHxHEIGHT', default='1280x720',
         help='window resolution (default: 1280x720)')
     argparser.add_argument(
-        '--filter', metavar='PATTERN', default='vehicle.*',
+        '--filter', metavar='PATTERN', default='vehicle.nissan.vr',
         help='actor filter (default: "vehicle.*")')
     argparser.add_argument(
         '--generation', metavar='G', default='All',
