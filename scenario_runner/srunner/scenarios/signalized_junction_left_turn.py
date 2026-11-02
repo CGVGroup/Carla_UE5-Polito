@@ -73,7 +73,9 @@ class JunctionLeftTurn(BasicScenario):
 
         # The faster the flow, the further they are spawned, leaving time to react to them
         self._source_dist = 4 * self._flow_speed
-        self._sink_dist = 2.5 * self._flow_speed
+        # Kept generous (rather than the original 2.5x) so flow vehicles drive well out of
+        # view/around a bend before being destroyed, instead of visibly vanishing nearby.
+        self._sink_dist = 8 * self._flow_speed
 
         super().__init__("JunctionLeftTurn",
                          ego_vehicles,
@@ -106,6 +108,13 @@ class JunctionLeftTurn(BasicScenario):
         source_entry_wps = filter_junction_wp_direction(starting_wp, entry_wps, self._direction)
         if not source_entry_wps:
             raise ValueError("Trying to find a lane in the {} direction but none was found".format(self._direction))
+
+        # Entries from the perpendicular (left/right) directions, closed off so only the
+        # opposite-direction flow enters the junction while this scenario is active.
+        self._perpendicular_entry_wps = (
+            filter_junction_wp_direction(starting_wp, entry_wps, 'left') +
+            filter_junction_wp_direction(starting_wp, entry_wps, 'right')
+        )
 
         # Get the source transform
         source_entry_wp = self._rng.choice(source_entry_wps)
@@ -198,7 +207,7 @@ class SignalizedJunctionLeftTurn(JunctionLeftTurn):
             sequence.add_child(HandleJunctionScenario(
                 clear_junction=True,
                 clear_ego_entry=True,
-                remove_entries=get_same_dir_lanes(self._source_wp),
+                remove_entries=get_same_dir_lanes(self._source_wp) + self._perpendicular_entry_wps,
                 remove_exits=get_same_dir_lanes(self._sink_wp),
                 stop_entries=False,
                 extend_road_exit=self._sink_dist + 20
@@ -248,7 +257,7 @@ class NonSignalizedJunctionLeftTurn(JunctionLeftTurn):
             sequence.add_child(HandleJunctionScenario(
                 clear_junction=True,
                 clear_ego_entry=True,
-                remove_entries=get_same_dir_lanes(self._source_wp),
+                remove_entries=get_same_dir_lanes(self._source_wp) + self._perpendicular_entry_wps,
                 remove_exits=get_same_dir_lanes(self._sink_wp),
                 stop_entries=True,
                 extend_road_exit=self._sink_dist + 20

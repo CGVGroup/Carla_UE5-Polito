@@ -57,7 +57,7 @@
             <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
                 <trigger_point x="-453.95" y="-418.53" z="0.00" yaw="-0.05"/>
                 <distance value="10"/>
-                <blocker_model value="static.prop.haybalelb"/>
+                <blocker_model value="static.prop.kiosk_01"/>
                 <crossing_angle value="10"/>
             </scenario>
             <scenario name="SignalizedJunctionLeftTurn_1" type="NonSignalizedJunctionLeftTurn">
@@ -73,7 +73,7 @@
             <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
                 <trigger_point x="-164.88" y="-518.20" z="0.00" yaw="180.02"/>
                 <distance value="10"/>
-                <blocker_model value="static.prop.haybalelb"/>
+                <blocker_model value="vehicle.sprinter.mercedes"/>
                 <crossing_angle value="10"/>
             </scenario>
             <scenario name="SignalizedJunctionLeftTurn_1" type="NonSignalizedJunctionLeftTurn">
@@ -84,7 +84,7 @@
             <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
                 <trigger_point x="-260.46" y="-357.81" z="0.00" yaw="89.93"/>
                 <distance value="10"/>
-                <blocker_model value="static.prop.haybalelb"/>
+                <blocker_model value="vehicle.ambulance.ford"/>
                 <crossing_angle value="10"/>
             </scenario>
             <scenario name="ConstructionObstacleTwoWays_1" type="ConstructionObstacleTwoWays">
@@ -116,7 +116,7 @@
             <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
                 <trigger_point x="-409.61" y="-161.73" z="0.00" yaw="180.02"/>
                 <distance value="10"/>
-                <blocker_model value="static.prop.haybalelb"/>
+                <blocker_model value="vehicle.carlacola.actors"/>
                 <crossing_angle value="10"/>
             </scenario>
         </scenarios>

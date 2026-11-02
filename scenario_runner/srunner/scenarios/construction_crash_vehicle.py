@@ -47,6 +47,21 @@ def get_interval_parameter(config, name, p_type, default):
     else:
         return default
 
+class RemoveBlockedZone(py_trees.behaviour.Behaviour):
+    """Tells the background activity that a lane stretch closed by a scenario is open again"""
+
+    def __init__(self, zone_id, name="RemoveBlockedZone"):
+        super().__init__(name)
+        self._zone_id = zone_id
+
+    def update(self):
+        blackboard = py_trees.blackboard.Blackboard()
+        zones = blackboard.get('BA_BlockedZonesToRemove') or []
+        zones.append(self._zone_id)
+        blackboard.set('BA_BlockedZonesToRemove', zones, overwrite=True)
+        return py_trees.common.Status.SUCCESS
+
+
 class ConstructionObstacle(BasicScenario):
     """
     This class holds everything required for a construction scenario
@@ -93,9 +108,67 @@ class ConstructionObstacle(BasicScenario):
         if not wps:
             raise ValueError("Couldn't find a viable position to set up the construction actors")
         self._construction_wp = wps[0]
+        if self.route_mode:
+            self._register_blocked_zone()
         self._create_construction_setup(self._construction_wp.transform, self._reference_waypoint.lane_width)
 
         self._end_wp = self._move_waypoint_forward(self._construction_wp, self._end_distance)
+
+    def _register_blocked_zone(self):
+        """
+        Tells the background activity that the construction closes the lane, from the warning
+        sign to the last cones, so that its vehicles never drive into it (see BackgroundBehavior)
+        """
+        start_wps = self._construction_wp.previous(8)
+        wp = start_wps[0] if start_wps else self._construction_wp
+        locations = [wp.transform.location]
+        for _ in range(12):  # ~24 m, past the cones crossing the lane
+            next_wps = wp.next(2)
+            if not next_wps:
+                break
+            wp = next_wps[0]
+            locations.append(wp.transform.location)
+
+        self._blocked_zone_id = "construction_{}".format(id(self))
+        blackboard = py_trees.blackboard.Blackboard()
+        zones = blackboard.get('BA_BlockedZonesToAdd') or []
+        zones.append((self._blocked_zone_id, locations))
+        blackboard.set('BA_BlockedZonesToAdd', zones, overwrite=True)
+
+    def _snap_to_ground(self, location, vertical_search_margin=20.0, search_distance=50.0):
+        """
+        Returns a copy of location with z replaced by the actual ground height at
+        (x, y), found via a downward raycast. Works around any elevation mismatch
+        between the .xodr road network (where these props' positions are computed
+        from) and the level's actual visual/collision geometry, which otherwise
+        makes props float above or sink below the real ground. Falls back to the
+        original z if no ground is found nearby.
+        """
+        query_location = carla.Location(location.x, location.y, location.z + vertical_search_margin)
+        hit = self._world.ground_projection(query_location, search_distance)
+        if hit is None:
+            return location
+        return carla.Location(location.x, location.y, hit.location.z)
+
+    def _spawn_grounded_prop(self, model, transform, lifts=(0.0, 0.3, 0.6, 1.0, 2.0)):
+        """
+        Spawns a static prop at 'transform'. Props snapped exactly onto the ground often
+        intersect it and fail the spawn collision check, so retry slightly higher, then
+        disable physics and teleport the prop back down (set_transform skips that check).
+        Returns None (with a warning) if every attempt fails.
+        """
+        for lift in lifts:
+            spawn_location = carla.Location(transform.location.x, transform.location.y,
+                                            transform.location.z + lift)
+            actor = CarlaDataProvider.request_new_actor(
+                model, carla.Transform(spawn_location, transform.rotation))
+            if actor:
+                actor.set_simulate_physics(False)
+                if lift > 0:
+                    actor.set_transform(carla.Transform(transform.location, transform.rotation))
+                return actor
+        print("WARNING: Skipping prop {} at {}, it could not be spawned".format(model, transform.location))
+        return None
 
     def _move_waypoint_forward(self, wp, distance):
         dist = 0
@@ -126,7 +199,9 @@ class ConstructionObstacle(BasicScenario):
             r_vec *= -1
 
         spawn_transform = wp.transform
-        spawn_transform.location += carla.Location(x=displacement * r_vec.x, y=displacement * r_vec.y, z=0.2)
+        spawn_transform.location += carla.Location(x=displacement * r_vec.x, y=displacement * r_vec.y)
+        spawn_transform.location = self._snap_to_ground(spawn_transform.location)
+        spawn_transform.location.z += 0.2
         spawn_transform.rotation.yaw += 90
         signal_prop = CarlaDataProvider.request_new_actor('static.prop.warningconstruction', spawn_transform)
         if not signal_prop:
@@ -143,13 +218,13 @@ class ConstructionObstacle(BasicScenario):
             forward_dist = carla.Vector3D(0, 0, 0) + forward_vector * _dist
 
             location = start_transform.location + forward_dist
+            location = self._snap_to_ground(location)
             location.z += z_inc
-            spawn_transform = carla.Transform(location, start_transform.rotation)
-            # spawn_transform.location.z -= 200
             cone_transform = carla.Transform(location, start_transform.rotation)
 
-            cone = CarlaDataProvider.request_new_actor('static.prop.constructioncone', spawn_transform)
-            cone.set_simulate_physics(False)
+            cone = self._spawn_grounded_prop('static.prop.constructioncone', cone_transform)
+            if not cone:
+                continue
             self.other_actors.append(cone)
 
             self._construction_transforms.append([cone, cone_transform])
@@ -159,7 +234,10 @@ class ConstructionObstacle(BasicScenario):
 
         _initial_offset = {'cones': {'yaw': 270, 'k': 0.85 * lane_width / 2.0},
                            'warning_sign': {'yaw': 180, 'k': 5, 'z': 0},
-                           'debris': {'yaw': 0, 'k': 2, 'z': 1}}
+                           # Physics is disabled on these props (see set_simulate_physics(False)
+                           # below), so a non-zero z here means the debris floats permanently
+                           # instead of settling to the ground - keep it at ground level.
+                           'debris': {'yaw': 0, 'k': 2, 'z': 0}}
         _prop_names = {'warning_sign': 'static.prop.trafficwarning',
                        'debris': 'static.prop.dirtdebris02'}
 
@@ -177,14 +255,13 @@ class ConstructionObstacle(BasicScenario):
             transform.rotation.yaw += value['yaw']
             transform.location += value['k'] * \
                 transform.rotation.get_forward_vector()
+            transform.location = self._snap_to_ground(transform.location)
             transform.location.z += value['z']
             transform.rotation.yaw += _perp_angle
 
-            spawn_transform = carla.Transform(transform.location, transform.rotation)
-            # spawn_transform.location.z -= 200
-            static = CarlaDataProvider.request_new_actor(
-                _prop_names[key], spawn_transform)
-            static.set_simulate_physics(False)
+            static = self._spawn_grounded_prop(_prop_names[key], transform)
+            if not static:
+                continue
             self.other_actors.append(static)
 
             self._construction_transforms.append([static, transform])
@@ -247,6 +324,7 @@ class ConstructionObstacle(BasicScenario):
         if self.route_mode:
             root.add_child(SetMaxSpeed(0))
             root.add_child(ReAddRoadLane(0))
+            root.add_child(RemoveBlockedZone(self._blocked_zone_id))
         for actor in self.other_actors:
             root.add_child(ActorDestroy(actor))
 
@@ -331,6 +409,7 @@ class ConstructionObstacleTwoWays(ConstructionObstacle):
             root.add_child(SwitchWrongDirectionTest(True))
             root.add_child(ChangeOppositeBehavior(active=True,spawn_dist = None))
             root.add_child(ReAddRoadLane(0))
+            root.add_child(RemoveBlockedZone(self._blocked_zone_id))
         for actor in self.other_actors:
             root.add_child(ActorDestroy(actor))
 

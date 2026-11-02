@@ -151,15 +151,18 @@ class RouteScenario(BasicScenario):
         elevate_transform = self.route[0][0]
         elevate_transform.location.z += 0.5
 
-        ego_vehicle = CarlaDataProvider.request_new_actor('vehicle.lincoln.mkz',
+        # The route's 'ego' attribute in the routes XML (vehicle.tesla.Vr by default)
+        ego_model = getattr(self.config, 'ego_model', None) or 'vehicle.tesla.Vr'
+        print("Ego vehicle:", ego_model)
+        ego_vehicle = CarlaDataProvider.request_new_actor(ego_model,
                                                           elevate_transform,
                                                           rolename='hero')
         if not ego_vehicle:
             return
 
-        spectator = self.world.get_spectator()
-        spectator.set_transform(carla.Transform(elevate_transform.location + carla.Location(z=50),
-                                                    carla.Rotation(pitch=-90)))
+        # spectator = self.world.get_spectator()
+        # spectator.set_transform(carla.Transform(elevate_transform.location + carla.Location(z=50),
+        #                                             carla.Rotation(pitch=-90)))
 
         self.world.tick()
 
@@ -223,7 +226,7 @@ class RouteScenario(BasicScenario):
         if ego_location is None:
             return
 
-        for slot in self.available_parking_locations:
+        for slot in list(self.available_parking_locations):
             slot_transform = carla.Transform(
                 location=carla.Location(slot["location"][0], slot["location"][1], slot["location"][2]),
                 rotation=carla.Rotation(slot["rotation"][0], slot["rotation"][1], slot["rotation"][2])
@@ -231,11 +234,18 @@ class RouteScenario(BasicScenario):
 
             # Add all vehicles that are close to the ego and in a free space
             if is_close(slot_transform.location, ego_location) and is_free(slot_transform.location):
-                mesh_bp = CarlaDataProvider.get_world().get_blueprint_library().filter("static.prop.mesh")[0]
+                # The blueprint library is fetched from the server once (it ran every second for each slot,
+                # competing with the simulation steps: hitches in VR)
+                if getattr(self, '_parked_mesh_bp', None) is None:
+                    self._parked_mesh_bp = CarlaDataProvider.get_world().get_blueprint_library().filter("static.prop.mesh")[0]
+                mesh_bp = self._parked_mesh_bp
                 mesh_bp.set_attribute("mesh_path", slot["mesh"])
                 mesh_bp.set_attribute("scale", "0.9")
                 new_parked_vehicles.append(carla.command.SpawnActor(mesh_bp, slot_transform))
                 self.available_parking_locations.remove(slot)
+
+        if not new_parked_vehicles:
+            return
 
         # Add the actors to _parked_ids
         for response in CarlaDataProvider.get_client().apply_batch_sync(new_parked_vehicles):
@@ -309,7 +319,7 @@ class RouteScenario(BasicScenario):
             self.ego_data = ActorConfigurationData(ego_vehicle.type_id, ego_vehicle.get_transform(), 'hero')
 
         # Part 1. Check all scenarios that haven't been initialized, starting them if close enough to the ego vehicle
-        for scenario_config in self.missing_scenario_configurations:
+        for scenario_config in list(self.missing_scenario_configurations):
             scenario_config.ego_vehicles = [self.ego_data]
             scenario_config.route = self.route
 
@@ -345,8 +355,7 @@ class RouteScenario(BasicScenario):
 
             except Exception as e:
                 print(f"\033[93mSkipping scenario '{scenario_config.name}' due to setup error: {e}")
-                if debug:
-                    print(f"\n{traceback.format_exc()}")
+                print(f"\n{traceback.format_exc()}")
                 print("\033[0m", end="")
                 self.missing_scenario_configurations.remove(scenario_config)
                 continue

@@ -14,9 +14,13 @@ from agents.navigation.local_planner import RoadOption
 from srunner.scenarioconfigs.route_scenario_configuration import RouteScenarioConfiguration
 from srunner.scenarioconfigs.scenario_configuration import ScenarioConfiguration, ActorConfigurationData
 
-# Threshold to say if a scenarios trigger position is part of the route
+# Threshold to say if a scenarios trigger position is part of the route.
+# Also used at runtime as the max distance between the ego's route progress and a
+# scenario's trigger point before that scenario activates - kept generous (rather than
+# the original 2.0) so activation isn't missed when the ego's real driven path deviates
+# slightly from the exact interpolated route, and so scenarios get a bit more lead time.
 DIST_THRESHOLD = 2.0
-ANGLE_THRESHOLD = 10
+ANGLE_THRESHOLD = 30
 
 
 def convert_elem_to_transform(elem):
@@ -111,6 +115,10 @@ class RouteParser(object):
 
             route_config = RouteScenarioConfiguration()
             route_config.town = route.attrib['town']
+            # VR dashboard visualization: 'full' (default), 'none' or 'text'
+            route_config.visualization = route.attrib.get('visualization', 'full')
+            # Ego vehicle blueprint (e.g. vehicle.mercedes.vr), vehicle.tesla.Vr by default
+            route_config.ego_model = route.attrib.get('ego', 'vehicle.tesla.Vr')
             route_config.name = "RouteScenario_{}".format(route_id)
             route_config.weather = RouteParser.parse_weather(route)
 
@@ -201,7 +209,7 @@ class RouteParser(object):
 
             dyaw = (float(trigger_transform.rotation.yaw) - route_transform.rotation.yaw) % 360
 
-            return dz < DIST_THRESHOLD and dpos < DIST_THRESHOLD \
+            return abs(dz) < DIST_THRESHOLD and dpos < DIST_THRESHOLD \
                 and (dyaw < ANGLE_THRESHOLD or dyaw > (360 - ANGLE_THRESHOLD))
 
         for route_transform, _ in route:

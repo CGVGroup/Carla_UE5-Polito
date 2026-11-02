@@ -15,3 +15,8 @@ CMakeSettings.json
 .clangd
 
 Help.md
+
+# Immersive XAI study: local data and files
+leaderboard/logs/
+leaderboard/run_log*.txt
+leaderboard/obs_password.txt

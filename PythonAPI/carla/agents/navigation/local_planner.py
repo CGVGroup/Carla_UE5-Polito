@@ -74,18 +74,33 @@ class LocalPlanner(object):
         self._min_waypoint_queue_length = 100
         self._stop_waypoint_creation = False
 
+        # Safety valve: force-advance past a target waypoint the vehicle can't
+        # physically reach (e.g. an unreachable lane-change target), so the plan
+        # can't deadlock forever on a single waypoint.
+        self._stuck_waypoint = None
+        self._stuck_ticks = 0
+        self._stuck_tick_limit = 100  # ~5s (set from the simulation step below)
+
         # Base parameters
-        self._dt = 1.0 / 20.0
+        # The simulation step (synchronous mode: the leaderboard's --frame-rate), 20 Hz when not fixed
+        self._dt = self._world.get_settings().fixed_delta_seconds or 1.0 / 20.0
+        self._stuck_tick_limit = int(round(5.0 / self._dt))
         self._target_speed = 20.0  # Km/h
         self._sampling_radius = 2.0
-        self._args_lateral_dict = {'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.2, 'dt': self._dt}
-        self._args_longitudinal_dict = {'K_P': 1.5, 'K_I': 0.05, 'K_D': 0.2, 'dt': self._dt}
+        # K_D raised from the original 0.2: peak lane-center deviation on ordinary curves
+        # was reaching ~1.6m (for a ~3.25m lane) even after tightening the lookahead
+        # distance, following a classic underdamped turn-in/overshoot/correct pattern.
+        self._args_lateral_dict = {'K_P': 1.95, 'K_I': 0.05, 'K_D': 0.4, 'dt': self._dt}
+        self._args_longitudinal_dict = {'K_P': 1.0, 'K_I': 0.05, 'K_D': 0, 'dt': self._dt}
         self._max_throt = 0.75
         self._max_brake = 0.3
         self._max_steer = 0.8
         self._offset = 0
         self._base_min_distance = 3.0
-        self._distance_ratio = 0.5
+        # Lower than the original 0.5: at higher cruise speeds the old ratio pushed the
+        # lookahead point far enough ahead to visibly cut corners on moderate curves
+        # (widespread ~0.75-1m lane-center drift observed across many road segments).
+        self._distance_ratio = 0.3
         self._follow_speed_limits = False
 
         # Overload parameters
@@ -218,6 +233,7 @@ class LocalPlanner(object):
 
     def set_offset(self, offset):
         """Sets an offset for the vehicle"""
+        self._offset = offset
         self._vehicle_controller.set_offset(offset)
 
     def run_step(self, debug=False):
@@ -248,14 +264,42 @@ class LocalPlanner(object):
             else:
                 min_distance = self._min_distance
 
-            if veh_location.distance(waypoint.transform.location) < min_distance:
+            # Measure to the point actually driven to: with a lateral offset (e.g. bypassing
+            # an obstacle) the lane-center waypoints beside the vehicle could otherwise stay
+            # farther than min_distance and never be removed
+            wp_location = waypoint.transform.location
+            if self._offset != 0:
+                r_vec = waypoint.transform.get_right_vector()
+                wp_location = wp_location + carla.Location(x=self._offset * r_vec.x, y=self._offset * r_vec.y)
+
+            if veh_location.distance(wp_location) < min_distance:
                 num_waypoint_removed += 1
             else:
                 break
 
+        # Waypoints the vehicle has already driven past without coming close to them (e.g. a driver took
+        # over and went around an obstacle in the other lane) are removed too. Otherwise, once control is
+        # given back, the vehicle would steer back towards them, behind it
+        num_waypoint_removed = max(num_waypoint_removed, self._passed_waypoints(veh_location))
+
         if num_waypoint_removed > 0:
             for _ in range(num_waypoint_removed):
                 self._waypoints_queue.popleft()
+            self._stuck_waypoint = None
+            self._stuck_ticks = 0
+        elif self._waypoints_queue:
+            front_waypoint = self._waypoints_queue[0][0]
+            if front_waypoint is self._stuck_waypoint:
+                self._stuck_ticks += 1
+                if self._stuck_ticks >= self._stuck_tick_limit and len(self._waypoints_queue) > 1:
+                    print("WARNING: Local planner stuck on waypoint {}, forcing advance".format(
+                        front_waypoint.transform.location))
+                    self._waypoints_queue.popleft()
+                    self._stuck_waypoint = None
+                    self._stuck_ticks = 0
+            else:
+                self._stuck_waypoint = front_waypoint
+                self._stuck_ticks = 0
 
         # Get the target waypoint and move using the PID controllers. Stop if no target waypoint
         if len(self._waypoints_queue) == 0:
@@ -267,12 +311,37 @@ class LocalPlanner(object):
             control.manual_gear_shift = False
         else:
             self.target_waypoint, self.target_road_option = self._waypoints_queue[0]
+            print("Target waypoint: ", self.target_waypoint.transform.location)
+            print("Target road option: ", self.target_road_option)
             control = self._vehicle_controller.run_step(self._target_speed, self.target_waypoint)
 
         if debug:
             draw_waypoints(self._vehicle.get_world(), [self.target_waypoint], 1.0)
 
         return control
+
+    def _passed_waypoints(self, veh_location, search=100, max_lateral=12.0, min_alignment=0.5):
+        """
+        Number of waypoints at the front of the queue that the vehicle is already past: the last one, among
+        the next `search`, that is behind the vehicle along its own direction, beside the vehicle (less than
+        max_lateral meters sideways) and pointing roughly the way the vehicle is heading. The two last
+        conditions keep other parts of the route that pass nearby (e.g. the other way) from matching.
+        """
+        veh_forward = self._vehicle.get_transform().get_forward_vector()
+        passed = 0
+        for index, (waypoint, _) in enumerate(self._waypoints_queue):
+            if index >= search or index >= len(self._waypoints_queue) - 1:
+                break  # the last waypoint is only removed when reached
+            wp_transform = waypoint.transform
+            wp_forward = wp_transform.get_forward_vector()
+            if wp_forward.x * veh_forward.x + wp_forward.y * veh_forward.y < min_alignment:
+                continue
+            vec = veh_location - wp_transform.location
+            along = vec.x * wp_forward.x + vec.y * wp_forward.y
+            lateral = abs(-vec.x * wp_forward.y + vec.y * wp_forward.x)
+            if along > 0.0 and lateral < max_lateral:
+                passed = index + 1
+        return passed
 
     def get_incoming_waypoint_and_direction(self, steps=3):
         """

@@ -29,6 +29,8 @@ from srunner.scenariomanager.carla_data_provider import *
 from srunner.scenariomanager.timer import GameTime
 from srunner.scenariomanager.watchdog import Watchdog
 
+from leaderboard.utils.stop_key import StopKey, STOP_KEY_NAME
+
 from leaderboard.scenarios.scenario_manager import ScenarioManager
 from leaderboard.scenarios.route_scenario import RouteScenario
 from leaderboard.envs.sensor_interface import SensorConfigurationInvalid
@@ -69,7 +71,7 @@ class LeaderboardEvaluator(object):
 
     # Tunable parameters
     client_timeout = 10.0  # in seconds
-    frame_rate = 20.0      # in Hz
+    frame_rate = 20.0      # in Hz (--frame-rate): simulation steps per second, one frames.csv row each
 
     def __init__(self, args, statistics_manager):
         """
@@ -92,6 +94,8 @@ class LeaderboardEvaluator(object):
         self._ros1_server = None
 
         # Setup the simulation
+        if getattr(args, 'frame_rate', None):
+            self.frame_rate = float(args.frame_rate)
         self.client, self.client_timeout, self.traffic_manager = self._setup_simulation(args)
 
         carla_version = get_carla_version()
@@ -116,6 +120,20 @@ class LeaderboardEvaluator(object):
         signal.signal(signal.SIGINT, self._signal_handler)
 
         self._client_timed_out = False
+
+        # Operator's stop key: ends the current route cleanly (its data kept) and skips the next ones
+        self._stop_key = StopKey(self._operator_stop)
+        self._stop_key.start()
+        if self._stop_key.available:
+            print("\033[1m> Press {} at any time to stop the run (the data so far is kept)\033[0m".format(STOP_KEY_NAME))
+
+    def _operator_stop(self):
+        print("\n\033[93m{} pressed: stopping the run, the data recorded so far is kept\033[0m".format(STOP_KEY_NAME))
+        self.manager.stop_requested = True
+        # Marked in the session log (events.jsonl), for the analysis to know the drive was cut short
+        logger = getattr(getattr(self, 'agent_instance', None), '_logger', None)
+        if logger is not None:
+            logger.event('operator_stop')
 
     def _signal_handler(self, signum, frame):
         """
@@ -235,6 +253,10 @@ class LeaderboardEvaluator(object):
         self.world.apply_settings(settings)
         print("\033[1m> World loaded: {}\033[0m".format(self.world.get_map().name))
 
+        # The world is not reloaded: the actors of previous runs (an ego that is still there keeps the
+        # VR player on board instead of the new one) are destroyed first
+        self._destroy_previous_actors()
+
         self.world.reset_all_traffic_lights()
         print("\033[1m> Traffic lights reset\033[0m")
         CarlaDataProvider.set_client(self.client)
@@ -257,6 +279,43 @@ class LeaderboardEvaluator(object):
         # if map_name.lower() != town.lower():
         #     raise Exception("The CARLA server uses the wrong map!"
         #                     " This scenario requires the use of map {}".format(town))
+
+    def _destroy_previous_actors(self):
+        """
+        Destroys the vehicles, walkers (and their controllers) and sensors left by previous runs
+        """
+        actors = self.world.get_actors()
+        sensors = list(actors.filter('sensor.*'))
+        for sensor in sensors:
+            try:
+                sensor.stop()
+            except Exception:
+                pass
+        controllers = list(actors.filter('controller.ai.walker'))
+        for controller in controllers:
+            try:
+                controller.stop()
+            except Exception:
+                pass
+        others = list(actors.filter('vehicle.*')) + list(actors.filter('walker.*'))
+
+        # Sensors and controllers before what they are attached to / control
+        if sensors + controllers:
+            self.client.apply_batch_sync([carla.command.DestroyActor(a.id) for a in sensors + controllers], True)
+        if others:
+            self.client.apply_batch_sync([carla.command.DestroyActor(a.id) for a in others], True)
+
+        # The server destroys the vehicles the client can't see (spawned by the VR blueprints) and what the VR
+        # blueprints left behind (steering wheel, AR-HUD elements...), keeping the player's VR pawn
+        try:
+            self.world.set_type_string_dashboard('cleanup:vehicles')
+        except Exception as e:
+            print("\033[93m> The server could not clean up the previous runs: {}\033[0m".format(e))
+        self.world.tick()
+        print("\033[1m> Destroyed the actors of previous runs: {} vehicles, {} walkers, {} sensors"
+              " (and the ones only the server sees, see the CARLA log)\033[0m".format(
+            len([a for a in others if a.type_id.startswith('vehicle.')]),
+            len([a for a in others if a.type_id.startswith('walker.')]), len(sensors)))
 
     def _register_statistics(self, route_index, entry_status, crash_message=""):
         """
@@ -364,7 +423,8 @@ class LeaderboardEvaluator(object):
             # Load scenario and run it
             if args.record:
                 self.client.start_recorder("{}/{}_rep{}.log".format(args.record, config.name, config.repetition_index))
-            self.manager.load_scenario(self.route_scenario, self.agent_instance, config.index, config.repetition_index, config.failtriggers, config.llmtriggers)
+            self.manager.load_scenario(self.route_scenario, self.agent_instance, config.index, config.repetition_index, config.failtriggers, config.llmtriggers,
+                                       getattr(config, 'visualization', None))
             self.manager.run_scenario()
 
         except AgentError:
@@ -379,6 +439,9 @@ class LeaderboardEvaluator(object):
             print(f"\n{traceback.format_exc()}\033[0m")
 
             entry_status, crash_message = FAILURE_MESSAGES["Simulation"]
+
+        if self.manager.stop_requested and not crash_message:
+            entry_status, crash_message = FAILURE_MESSAGES["Operator"]
 
         # Stop the scenario
         try:
@@ -419,22 +482,25 @@ class LeaderboardEvaluator(object):
         self.statistics_manager.write_statistics()
 
         crashed = False
-        while route_indexer.peek() and not crashed:
+        try:
+            while route_indexer.peek() and not crashed and not self.manager.stop_requested:
 
-            # Run the scenario
-            config = route_indexer.get_next_config()
-            crashed = self._load_and_run_scenario(args, config)
+                # Run the scenario
+                config = route_indexer.get_next_config()
+                crashed = self._load_and_run_scenario(args, config)
 
-            # Save the progress and write the route statistics
-            self.statistics_manager.save_progress(route_indexer.index, route_indexer.total)
-            self.statistics_manager.write_statistics()
+                # Save the progress and write the route statistics
+                self.statistics_manager.save_progress(route_indexer.index, route_indexer.total)
+                self.statistics_manager.write_statistics()
 
-        # Shutdown ROS1 bridge server if necessary
-        if self._ros1_server is not None:
-            self._ros1_server.shutdown()
-
-        # Go back to asynchronous mode
-        self._reset_world_settings()
+            # Shutdown ROS1 bridge server if necessary
+            if self._ros1_server is not None:
+                self._ros1_server.shutdown()
+        finally:
+            # Go back to asynchronous mode no matter how we got here (including a
+            # Ctrl+C / watchdog-triggered interrupt), so the server is never left
+            # stuck in synchronous mode with nothing ticking it.
+            self._reset_world_settings()
 
         if not crashed:
             # Save global statistics
@@ -461,6 +527,10 @@ def main():
                         help='Run with debug output', default=0)
     parser.add_argument('--record', type=str, default='',
                         help='Use CARLA recording feature to create a recording of the scenario')
+    parser.add_argument('--frame-rate', default=20.0, type=float,
+                        help='Simulation steps per second (synchronous mode), also the session log rate. Above what\n'
+                             'the server and the agent keep up with, the simulation runs slower than real time\n'
+                             '(summary.json: realtime_factor) (default: 20)')
     parser.add_argument('--timeout', default=300.0, type=float,
                         help='Set the CARLA client timeout value in seconds')
 

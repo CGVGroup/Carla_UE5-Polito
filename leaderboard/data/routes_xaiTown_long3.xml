@@ -49,7 +49,7 @@
             <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
                     <trigger_point x="-125.05" y="48.65" z="0.00" yaw="-90.00"/>
                     <distance value="10"/>
-                    <blocker_model value="static.prop.haybalelb"/>
+                    <blocker_model value="static.prop.kiosk_01"/>
                     <crossing_angle value="10"/>
             </scenario>
             <!-- <scenario name="SignalizedJunctionLeftTurn_1" type="NonSignalizedJunctionLeftTurn">
@@ -85,7 +85,7 @@
             <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
                     <trigger_point x="-498.70" y="-290.99" z="0.00" yaw="-89.93"/>
                     <distance value="10"/>
-                    <blocker_model value="static.prop.haybalelb"/>
+                    <blocker_model value="vehicle.sprinter.mercedes"/>
                     <crossing_angle value="10"/>
             </scenario>
             <scenario name="ConstructionObstacleTwoWays_1" type="ConstructionObstacleTwoWays">
@@ -96,7 +96,7 @@
             <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
                     <trigger_point x="-208.57" y="-418.52" z="0.00" yaw="0.06"/>
                     <distance value="10"/>
-                    <blocker_model value="static.prop.haybalelb"/>
+                    <blocker_model value="vehicle.ambulance.ford"/>
                     <crossing_angle value="10"/>
             </scenario>
             <scenario name="SignalizedJunctionLeftTurn_1" type="NonSignalizedJunctionLeftTurn">
@@ -117,7 +117,7 @@
             <scenario name="DynamicObjectCrossing_1" type="DynamicObjectCrossing">
                     <trigger_point x="-546.96" y="-161.70" z="0.00" yaw="180.01"/>
                     <distance value="10"/>
-                    <blocker_model value="static.prop.haybalelb"/>
+                    <blocker_model value="vehicle.carlacola.actors"/>
                     <crossing_angle value="10"/>
             </scenario>
         </scenarios>

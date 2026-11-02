@@ -243,6 +243,14 @@ class AgentWrapper(object):
         :param llmtrigger: list of llm triggers
         """
         self._agent.set_llmtriggers(llmtrigger)
+
+    def set_visualization(self, visualization):
+        """
+        Set the VR dashboard visualization mode of the agent ('full', 'none' or 'text'), if it has one
+        :param visualization: mode, from the route's 'visualization' attribute
+        """
+        if hasattr(self._agent, 'set_visualization'):
+            self._agent.set_visualization(visualization)
         
     def setup_sensors(self, vehicle):
         """

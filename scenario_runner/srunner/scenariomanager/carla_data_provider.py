@@ -262,7 +262,7 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
         print("LALAL CarlaDataProvider: world set, sync mode is {}".format(CarlaDataProvider._sync_flag))
         CarlaDataProvider._map = world.get_map()
         CarlaDataProvider._blueprint_library = world.get_blueprint_library()
-        CarlaDataProvider._grp = None # GlobalRoutePlanner(CarlaDataProvider._map, 2.0)
+        CarlaDataProvider._grp = GlobalRoutePlanner(CarlaDataProvider._map, 2.0)
         print("CarlaDataProvider: world set, sync mode is {}".format(CarlaDataProvider._sync_flag))
         # CarlaDataProvider.generate_spawn_points()
         print("CarlaDataProvider: world set, spawn points generated")
@@ -704,24 +704,70 @@ class CarlaDataProvider(object):  # pylint: disable=too-many-public-methods
             'misc': 'static.prop.streetbarrier'
         }
 
+        def exclude_vr_unless_hero(blueprints):
+            """
+            '*.vr' blueprints are reserved for the ego ('hero') vehicle only.
+            Every other actor (background traffic, scenario flows, blockers, ...) must not use them.
+            """
+            if rolename == 'hero':
+                return blueprints
+            # Case-insensitive: vehicle.tesla.Vr too. A model that only matches VR blueprints gets a plain
+            # car instead (never a VR one)
+            filtered = [bp for bp in blueprints if not bp.id.lower().endswith('.vr')]
+            if not filtered and any(bp.id.startswith('vehicle.') for bp in blueprints):
+                filtered = [bp for bp in CarlaDataProvider._blueprint_library.filter('vehicle.*')
+                            if not bp.id.lower().endswith('.vr')
+                            and bp.has_attribute('base_type') and bp.get_attribute('base_type').as_str().lower() == 'car']
+            return filtered if filtered else blueprints
+
         # Set the model
         try:
             print("Creating actor with model: {}".format(model))
             blueprints = CarlaDataProvider._blueprint_library.filter(model)
+            blueprints = exclude_vr_unless_hero(blueprints)
             if attribute_filter is not None:
                 for key, value in attribute_filter.items():
                     blueprints = [x for x in blueprints if check_attribute_value(x, key, value)]
-            
+
             print("blueprints: {}".format(blueprints))
             blueprint = CarlaDataProvider._rng.choice(blueprints)
         except ValueError:
-            # The model is not part of the blueprint library. Let's take a default one for the given category
+            # The model is not part of the blueprint library. Let's take a default one for the given category.
+            # Trust the originally requested model's own prefix over actor_category when they disagree
+            # (e.g. a prop model requested with the default actor_category='car'): falling back to a
+            # vehicle for a missing prop causes it to be spawned at a position/orientation sized for the
+            # much smaller prop, which then fails to spawn at all due to collisions.
+            if model.startswith('static.'):
+                fallback_category = 'misc'
+            elif model.startswith('walker.'):
+                fallback_category = 'pedestrian'
+            else:
+                fallback_category = actor_category
+
             bp_filter = "vehicle.*"
-            new_model = _actor_blueprint_categories[actor_category]
+            new_model = _actor_blueprint_categories[fallback_category]
             if new_model != '':
                 bp_filter = new_model
             print("WARNING: Actor model {} not available. Using instead {}".format(model, new_model))
-            blueprint = CarlaDataProvider._rng.choice(CarlaDataProvider._blueprint_library.filter(bp_filter))
+            fallback_blueprints = exclude_vr_unless_hero(CarlaDataProvider._blueprint_library.filter(bp_filter))
+            if not fallback_blueprints:
+                # The category default isn't present in this content build either
+                # (e.g. an asset that only existed in an older CARLA version).
+                # Fall back further to any blueprint of the right general kind.
+                if fallback_category == 'pedestrian':
+                    generic_filter = "walker.pedestrian.*"
+                elif fallback_category == 'misc':
+                    generic_filter = "static.prop.*"
+                else:
+                    generic_filter = "vehicle.*"
+                print("WARNING: Default model {} for category '{}' not available either. "
+                      "Falling back to '{}'".format(new_model, fallback_category, generic_filter))
+                fallback_blueprints = exclude_vr_unless_hero(CarlaDataProvider._blueprint_library.filter(generic_filter))
+            if not fallback_blueprints:
+                raise ValueError(
+                    "Could not find a blueprint for model '{}' (category '{}'), "
+                    "and no fallback blueprints are available in this content build".format(model, actor_category))
+            blueprint = CarlaDataProvider._rng.choice(fallback_blueprints)
 
         # Set the color
         if color:

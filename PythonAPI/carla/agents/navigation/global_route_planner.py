@@ -33,9 +33,9 @@ class GlobalRoutePlanner(object):
         self._previous_decision = RoadOption.VOID
 
         # Build the graph
-        print('Building the route planner graph...')
+        print('Building the global route planner graph representation of the map...')
         self._build_topology()
-        print('Topology built with %d segments, building graph...'%len(self._topology))
+        print('Done building topology, now building graph...')
         self._build_graph()
         self._find_loose_ends()
         self._lane_change_link()
@@ -98,7 +98,7 @@ class GlobalRoutePlanner(object):
         self._topology = []
         # Retrieving waypoints to construct a detailed topology
         for segment in self._wmap.get_topology():
-            print('Processing segment %d/%d'%(len(self._topology)+1, len(self._wmap.get_topology())), end='\r')
+            print('Processing segment between {} and {}'.format(segment[0].transform.location, segment[1].transform.location))
             wp1, wp2 = segment[0], segment[1]
             l1, l2 = wp1.transform.location, wp2.transform.location
             # Rounding off to avoid floating point imprecision
@@ -111,20 +111,29 @@ class GlobalRoutePlanner(object):
             endloc = wp2.transform.location
             if wp1.transform.location.distance(endloc) > self._sampling_resolution:
                 w = wp1.next(self._sampling_resolution)[0]
+                initial_distance = wp1.transform.location.distance(endloc)
+                max_steps = int(initial_distance / self._sampling_resolution) * 2 + 10
                 while w.transform.location.distance(endloc) > self._sampling_resolution:
-                    print('Processing segment %d/%d, waypoint %d'%(len(self._topology)+1, len(self._wmap.get_topology()), len(seg_dict['path'])), end='\r')
                     seg_dict['path'].append(w)
                     next_ws = w.next(self._sampling_resolution)
                     if len(next_ws) == 0:
                         break
+                    if len(seg_dict['path']) >= max_steps:
+                        print('WARNING: Truncated topology segment after {} steps (entry={}, intended exit={}, '
+                              'reached={}, distance to exit={:.1f}m)'.format(
+                                  max_steps, seg_dict['entry'].transform.location, endloc,
+                                  w.transform.location, w.transform.location.distance(endloc)))
+                        break
                     w = next_ws[0]
             else:
-                print('Processing segment %d/%d, waypoint %d'%(len(self._topology)+1, len(self._wmap.get_topology()), len(seg_dict['path'])), end='\r')
+                print('Segment is shorter than sampling resolution, skipping intermediate waypoints')
                 next_wps = wp1.next(self._sampling_resolution)
                 if len(next_wps) == 0:
                     continue
                 seg_dict['path'].append(next_wps[0])
             self._topology.append(seg_dict)
+            print('Done processing segment between {} and {}'.format(segment[0].transform.location, segment[1].transform.location))
+        print('Done building topology with {} segments'.format(len(self._topology)))
 
     def _build_graph(self):
         """

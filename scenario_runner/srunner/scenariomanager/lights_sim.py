@@ -42,8 +42,11 @@ class RouteLightsBehavior(py_trees.behaviour.Behaviour):
         self._radius = radius
         self._radius_increase = radius_increase
         self._world = CarlaDataProvider.get_world()
-        self._light_manager = self._world.get_lightmanager()
-        self._light_manager.set_day_night_cycle(False)
+        try:
+            self._light_manager = self._world.get_lightmanager()
+            self._light_manager.set_day_night_cycle(False)
+        except AttributeError:
+            self._light_manager = None
         self._vehicle_lights = carla.VehicleLightState.Position | carla.VehicleLightState.LowBeam
 
         self._prev_night_mode = False
@@ -53,6 +56,9 @@ class RouteLightsBehavior(py_trees.behaviour.Behaviour):
         Turns on / off all the lghts around a radius of the ego vehicle
         """
         new_status = py_trees.common.Status.RUNNING
+
+        if not self._light_manager:
+            return new_status
 
         location = CarlaDataProvider.get_location(self._ego_vehicle)
         if not location:
@@ -146,5 +152,6 @@ class RouteLightsBehavior(py_trees.behaviour.Behaviour):
         self._ego_vehicle.set_light_state(carla.VehicleLightState(lights))
 
     def terminate(self, new_status):
-        self._light_manager.set_day_night_cycle(True)
+        if self._light_manager:
+            self._light_manager.set_day_night_cycle(True)
         return super().terminate(new_status)

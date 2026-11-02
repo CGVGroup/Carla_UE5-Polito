@@ -16,6 +16,7 @@ from srunner.scenariomanager.timer import GameTime
 
 from leaderboard.utils.route_manipulation import downsample_route
 from leaderboard.envs.sensor_interface import SensorInterface
+from leaderboard.utils import step_timing
 
 
 class Track(Enum):
@@ -101,7 +102,8 @@ class AutonomousAgent(object):
         Execute the agent call, e.g. agent()
         Returns the next vehicle controls
         """
-        input_data = self.sensor_interface.get_data(GameTime.get_frame())
+        with step_timing.measure('sensors'):
+            input_data = self.sensor_interface.get_data(GameTime.get_frame())
         print("input_data: ", input_data.keys())
 
         timestamp = GameTime.get_time()

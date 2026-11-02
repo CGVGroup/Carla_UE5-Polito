@@ -16,6 +16,7 @@ import carla
 from math import floor
 
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
+from srunner.scenariomanager.timer import GameTime
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import (ActorDestroy,
                                                                       KeepVelocity,
                                                                       Idle,
@@ -36,6 +37,180 @@ def get_value_parameter(config, name, p_type, default):
         return p_type(config.other_parameters[name]['value'])
     else:
         return default
+
+
+class CrossingWalker(object):
+    """
+    Moves the crossing pedestrian along a straight line with walker states (location +
+    speed), sampling the ground height along the way so it steps down/up the curbs.
+
+    This server build doesn't move walkers with WalkerControl (map_viewer/test_walker_control.py),
+    and moving them with set_location leaves them sliding in a frozen standing pose. A walker
+    state puts the walker exactly where asked and plays the walk cycle at the given speed,
+    once the walker's animation has been enabled by briefly running an AI walker controller.
+    """
+
+    _GROUND_STEP = 0.5  # [m] spacing of the ground height samples along the path
+
+    def __init__(self, walker, spot, yaw, path_length):
+        self.walker = walker
+        self.yaw = yaw
+        self.direction = carla.Rotation(yaw=yaw).get_forward_vector()
+        self.placed = False
+        self._setup_step = 0
+        self._ai_controller = None
+
+        world = CarlaDataProvider.get_world()
+        carla_map = CarlaDataProvider.get_map()
+        self._ground = []
+        for k in range(int(path_length / self._GROUND_STEP) + 2):
+            d = k * self._GROUND_STEP
+            location = spot + carla.Location(x=self.direction.x * d, y=self.direction.y * d)
+            self._ground.append(self._ground_height(world, carla_map, location))
+        self.spot = carla.Location(spot.x, spot.y, self._ground[0])
+
+    _GROUND_LABELS = ('Roads', 'RoadLines', 'Sidewalks', 'Ground', 'Terrain')
+    _GROUND_TOLERANCE = 0.6  # [m] around the road / sidewalk height given by the map
+
+    @classmethod
+    def _ground_height(cls, world, carla_map, location):
+        """
+        Height of the ground (road, sidewalk, terrain) at a location. The map gives the road /
+        sidewalk height there; the actual surface is taken from a vertical ray, only accepting hits
+        close to that height (preferring those labelled as ground). This ignores anything above the
+        ground, whatever its label: the blocker's top, invisible sign trigger boxes, ... which would
+        otherwise leave the pedestrian standing on them or floating in the air.
+        """
+        reference = carla_map.get_waypoint(location, project_to_road=True, lane_type=carla.LaneType.Any)
+        ref_z = reference.transform.location.z if reference else location.z
+        hits = world.cast_ray(carla.Location(location.x, location.y, ref_z + 3.0),
+                              carla.Location(location.x, location.y, ref_z - 3.0))
+        near = [hit for hit in hits if abs(hit.location.z - ref_z) < cls._GROUND_TOLERANCE]
+        ground = [hit for hit in near if str(hit.label) in cls._GROUND_LABELS]
+        if ground:
+            return max(hit.location.z for hit in ground)
+        if near:
+            return max(hit.location.z for hit in near)
+        return ref_z
+
+    def _ground_z(self, distance):
+        index = min(distance / self._GROUND_STEP, len(self._ground) - 1.001)
+        k = int(index)
+        frac = index - k
+        return self._ground[k] * (1 - frac) + self._ground[k + 1] * frac
+
+    def set_state(self, distance, speed):
+        """Puts the walker at 'distance' along its path, with a walk cycle for 'speed' [m/s]"""
+        location = carla.Location(x=self.spot.x + self.direction.x * distance,
+                                  y=self.spot.y + self.direction.y * distance,
+                                  z=self._ground_z(distance))
+        CarlaDataProvider.get_client().apply_batch([carla.command.ApplyWalkerState(
+            self.walker.id, carla.Transform(location, carla.Rotation(yaw=self.yaw)), speed)])
+
+    def place(self):
+        """
+        Puts the walker standing at the start of its path. Needs a few calls, one per tick
+        (the AI controller has to be spawned, started and stopped on different ticks).
+        Returns True once the walker is in place.
+        """
+        if self.placed:
+            return True
+        if self._setup_step == 0:
+            world = CarlaDataProvider.get_world()
+            self.walker.set_simulate_physics(True)
+            self.walker.set_location(self.spot + carla.Location(z=1.0))
+            self._ai_controller = world.spawn_actor(
+                world.get_blueprint_library().find('controller.ai.walker'), carla.Transform(), self.walker)
+        elif self._setup_step == 1:
+            self._ai_controller.start()  # snaps the walker to the navmesh, it's placed back below
+        elif self._setup_step == 2:
+            self._ai_controller.stop()
+            self._ai_controller.destroy()
+            self._ai_controller = None
+        else:
+            self.set_state(0, 0)
+            self.placed = True
+        self._setup_step += 1
+        return self.placed
+
+
+class RevealPedestrian(py_trees.behaviour.Behaviour):
+    """
+    Keeps the pedestrian hidden under the ego (large map dormancy workaround, see
+    MovePedestrianWithEgo) until the ego is within 'reveal_distance' of its spot, then
+    puts it standing there. This way it's already present long before the ego is close,
+    instead of popping up a few meters in front of it.
+    """
+
+    def __init__(self, ego, crossing_walker, reveal_distance, name="RevealPedestrian"):
+        super().__init__(name)
+        self._ego = ego
+        self._walker = crossing_walker
+        self._reveal_distance = reveal_distance
+        self._hide = MovePedestrianWithEgo(ego, crossing_walker.walker, 100)
+
+    def initialise(self):
+        self._hide.initialise()
+        super().initialise()
+
+    def update(self):
+        if not self._walker.placed:
+            ego_location = CarlaDataProvider.get_location(self._ego)
+            if ego_location is not None and ego_location.distance(self._walker.spot) > self._reveal_distance:
+                self._hide.update()
+            else:
+                self._walker.place()
+        return py_trees.common.Status.RUNNING
+
+
+class PlacePedestrian(py_trees.behaviour.Behaviour):
+    """Makes sure the pedestrian stands at its spot (if it wasn't revealed already)"""
+
+    def __init__(self, crossing_walker, name="PlacePedestrian"):
+        super().__init__(name)
+        self._walker = crossing_walker
+
+    def update(self):
+        if self._walker.place():
+            return py_trees.common.Status.SUCCESS
+        return py_trees.common.Status.RUNNING
+
+
+class WalkerCrossing(py_trees.behaviour.Behaviour):
+    """
+    Walks the pedestrian along its path from 'start' to 'end' [m], speeding up from
+    standstill over 'accel_time' [s], and stops it at the end.
+    """
+
+    def __init__(self, crossing_walker, speed, start, end, accel_time=0.6, name="WalkerCrossing"):
+        super().__init__(name)
+        self._walker = crossing_walker
+        self._speed = speed
+        self._start = start
+        self._end = end
+        self._accel = speed / accel_time
+        self._distance = start
+        self._current_speed = 0.0
+        self._last_time = None
+
+    def initialise(self):
+        self._distance = self._start
+        self._current_speed = 0.0
+        self._last_time = GameTime.get_time()
+        super().initialise()
+
+    def update(self):
+        now = GameTime.get_time()
+        delta = now - self._last_time
+        self._last_time = now
+
+        self._current_speed = min(self._speed, self._current_speed + self._accel * delta)
+        self._distance = min(self._end, self._distance + self._current_speed * delta)
+        if self._distance >= self._end:
+            self._walker.set_state(self._end, 0)
+            return py_trees.common.Status.SUCCESS
+        self._walker.set_state(self._distance, self._current_speed)
+        return py_trees.common.Status.RUNNING
 
 
 class StationaryObjectCrossing(BasicScenario):
@@ -168,16 +343,24 @@ class DynamicObjectCrossing(BasicScenario):
         self._num_lane_changes = 0
 
         self._blocker_shift = 0.9
+        self._blocker_side_offset = 1.5  # [m] blocker and pedestrian, from the sidewalk's edge waypoint
         self._retry_dist = 0.4
 
         self._adversary_transform = None
         self._blocker_transform = None
         self._collision_wp = None
 
-        self._adversary_speed = 2.0  # Speed of the adversary [m/s]
+        self._adversary_speed = get_value_parameter(config, 'walker_speed', float, 1.6)  # brisk walk [m/s]
         self._crossing_angle = get_value_parameter(config, 'crossing_angle', float, 0)
         self._reaction_time = 2.1  # Time the agent has to react to avoid the collision [s]
         self._reaction_time += 0.1 * floor(self._crossing_angle / 5)
+        # Tuned for a 2 m/s adversary: start a slower one earlier so it reaches the lane at the same moment
+        self._reaction_time *= 2.0 / self._adversary_speed
+        # Distance to the ego at which the pedestrian is put in place, standing on the sidewalk
+        self._reveal_distance = get_value_parameter(config, 'reveal_distance', float, 80)
+        self._walk_away_distance = 3.0  # [m] walked past the far side of the road before stopping
+        self._crossing_walker = None
+        self._walker_clearance = 1.0  # [m] between the blocker's far end and the pedestrian's center
         self._min_trigger_dist = 6.0  # Min distance to the collision location that triggers the adversary [m]
         self._ego_end_distance = 40
         self.timeout = timeout
@@ -185,7 +368,11 @@ class DynamicObjectCrossing(BasicScenario):
         self._number_of_attempts = 6
 
         self._distance = get_value_parameter(config, 'distance', float, 12)
-        self._blocker_model = get_value_parameter(config, 'blocker_model', str, 'static.prop.vendingmachine')
+        # The pedestrian waits behind the blocker until crossing: it has to be big enough to hide it
+        # (a kiosk, ~2.5 x 2.5 x 3 m, by default). If the model can't be spawned, other big ones are tried
+        self._blocker_model = get_value_parameter(config, 'blocker_model', str, 'static.prop.kiosk_01')
+        self._blocker_fallbacks = ['static.prop.kiosk_01', 'vehicle.sprinter.mercedes', 'static.prop.container',
+                                   'static.prop.advertisement', 'static.prop.vendingmachine']
         if abs(self._crossing_angle) > 90:
             raise ValueError("'crossing_angle' must be between -90 and 90º for the pedestrian to cross the road")
         self._direction = get_value_parameter(config, 'direction', str, 'right')
@@ -198,6 +385,28 @@ class DynamicObjectCrossing(BasicScenario):
                                                     world,
                                                     debug_mode,
                                                     criteria_enable=criteria_enable)
+
+    @staticmethod
+    def _half_length_along(actor, actor_transform, waypoint):
+        """
+        Half of the actor's size along the waypoint's direction, from its bounding box and orientation.
+        The orientation is the one it was spawned with: right after spawning, get_transform() doesn't
+        return it yet.
+        """
+        extent = actor.bounding_box.extent
+        delta = math.radians(actor_transform.rotation.yaw - waypoint.transform.rotation.yaw)
+        return abs(extent.x * math.cos(delta)) + abs(extent.y * math.sin(delta))
+
+    @staticmethod
+    def _footprint_gap(location, actor, actor_transform):
+        """Horizontal distance from a location to the actor's footprint (its oriented bounding box)"""
+        box = actor.bounding_box
+        center = actor_transform.transform(box.location)
+        yaw = math.radians(actor_transform.rotation.yaw)
+        dx, dy = location.x - center.x, location.y - center.y
+        along = abs(dx * math.cos(yaw) + dy * math.sin(yaw)) - box.extent.x
+        across = abs(-dx * math.sin(yaw) + dy * math.cos(yaw)) - box.extent.y
+        return math.hypot(max(along, 0.0), max(across, 0.0))
 
     def _get_sidewalk_transform(self, waypoint, offset):
         """
@@ -253,26 +462,55 @@ class DynamicObjectCrossing(BasicScenario):
                 if side_wp.lane_type == carla.LaneType.Parking:
                     parking_location = side_wp.transform.location
 
-            # Get the blocker transform and spawn it
-            offset = {"yaw": 0 if 'vehicle' in self._blocker_model else 90, "z": 0.0, "k": 1.5}
-            self._blocker_transform = self._get_sidewalk_transform(sidewalk_waypoint, offset)
-            blocker = CarlaDataProvider.request_new_actor(
-                self._blocker_model, self._blocker_transform, rolename="scenario no lights")
+            # Get the blocker transform and spawn it (falling back to other big models)
+            blocker = None
+            library = CarlaDataProvider.get_world().get_blueprint_library()
+            for model in [self._blocker_model] + [m for m in self._blocker_fallbacks if m != self._blocker_model]:
+                # Models missing from this build would silently be replaced by a small default prop
+                if not [bp for bp in library.filter(model) if not bp.id.endswith('.vr')]:
+                    continue
+                offset = {"yaw": 0 if 'vehicle' in model else 90, "z": 0.0, "k": self._blocker_side_offset}
+                self._blocker_transform = self._get_sidewalk_transform(sidewalk_waypoint, offset)
+                blocker = CarlaDataProvider.request_new_actor(
+                    model, self._blocker_transform, rolename="scenario no lights")
+                if blocker:
+                    if model != self._blocker_model:
+                        print("DynamicObjectCrossing: blocker {} couldn't be spawned, using {}".format(
+                            self._blocker_model, model))
+                    break
             if not blocker:
                 self._number_of_attempts -= 1
                 move_dist = self._retry_dist
                 print("Failed to spawn the blocker")
                 continue
 
-            # Get the adversary transform and spawn it
-            walker_dist = blocker.bounding_box.extent.x + 0.5
-            wps = sidewalk_waypoint.next(walker_dist)
-            if not wps:
+            # Get the adversary transform and spawn it, behind the blocker (as seen from the ego): past
+            # its far end along the sidewalk, measured from its actual size and spawn orientation (it's
+            # turned across the road, and the model may be a fallback one with other dimensions). Then
+            # make sure the spot is clear of the blocker's footprint, moving further along if needed
+            walker_dist = self._half_length_along(blocker, self._blocker_transform, sidewalk_waypoint) \
+                + self._walker_clearance
+            walker_wp = None
+            for _ in range(12):
+                wps = sidewalk_waypoint.next(walker_dist)
+                if not wps:
+                    break
+                walker_wp = wps[0]
+                # Same side offset as the blocker: right behind it as seen from the road
+                offset = {"yaw": 270 - self._crossing_angle, "z": 1.2, "k": self._blocker_side_offset}
+                self._adversary_transform = self._get_sidewalk_transform(walker_wp, offset)
+                gap = self._footprint_gap(self._adversary_transform.location, blocker, self._blocker_transform)
+                if gap >= self._walker_clearance:
+                    break
+                walker_dist += 0.5
+            if walker_wp is None:
                 raise ValueError("Couldn't find a location to spawn the adversary")
-            walker_wp = wps[0]
+            print("DynamicObjectCrossing: blocker {} at {} yaw {:.0f} extent ({:.2f}, {:.2f}); pedestrian "
+                  "{:.1f} m further along the sidewalk at {}, {:.2f} m from the blocker's footprint".format(
+                      blocker.type_id, self._blocker_transform.location, self._blocker_transform.rotation.yaw,
+                      blocker.bounding_box.extent.x, blocker.bounding_box.extent.y, walker_dist,
+                      self._adversary_transform.location, gap))
 
-            offset = {"yaw": 270 - self._crossing_angle, "z": 1.2, "k": 1.2}
-            self._adversary_transform = self._get_sidewalk_transform(walker_wp, offset)
             adversary = CarlaDataProvider.request_new_actor('walker.*', self._adversary_transform)
             if adversary is None:
                 CarlaDataProvider.remove_actor_by_id(blocker.id)
@@ -292,6 +530,9 @@ class DynamicObjectCrossing(BasicScenario):
         blocker.set_simulate_physics(False)
         adversary.set_location(self._adversary_transform.location + carla.Location(z=-200))
         adversary = self._replace_walker(adversary)
+        self._crossing_walker = CrossingWalker(
+            adversary, self._adversary_transform.location, self._adversary_transform.rotation.yaw,
+            2 * self._collision_dist + self._walk_away_distance)
 
         if parking_location:
             self.parking_slots.append(parking_location)
@@ -311,7 +552,8 @@ class DynamicObjectCrossing(BasicScenario):
             total_dist = self._distance + 10
             sequence.add_child(LeaveSpaceInFront(total_dist))
 
-        sequence.add_child(ActorTransformSetter(self.other_actors[0], self._adversary_transform, True))
+        # Normally already standing there since the ego got within the reveal distance
+        sequence.add_child(PlacePedestrian(self._crossing_walker))
         collision_location = self._collision_wp.transform.location
 
         # Wait until ego is close to the adversary
@@ -323,19 +565,18 @@ class DynamicObjectCrossing(BasicScenario):
             self.ego_vehicles[0], collision_location, self._min_trigger_dist))
         sequence.add_child(trigger_adversary)
 
-        # Move the adversary
-        move_distance = 2 * self._collision_dist  # Cross the whole road (supposing symetry in both directions)
-        move_duration = move_distance / self._adversary_speed
+        # Move the adversary: cross the whole road (supposing symetry in both directions)
+        # and a few steps more, then stand there
+        move_distance = 2 * self._collision_dist + self._walk_away_distance
         if self.route_mode:
             sequence.add_child(LeaveCrossingSpace(self._collision_wp))
-        sequence.add_child(KeepVelocity(
-            self.other_actors[0], self._adversary_speed,
-            duration=move_duration, distance=move_distance, name="AdversaryCrossing"))
+        sequence.add_child(WalkerCrossing(
+            self._crossing_walker, self._adversary_speed, 0, move_distance, name="AdversaryCrossing"))
 
-        # Remove everything
+        # Remove everything once the ego has driven away, instead of making the pedestrian vanish
+        sequence.add_child(DriveDistance(self.ego_vehicles[0], self._ego_end_distance, name="EndCondition"))
         sequence.add_child(ActorDestroy(self.other_actors[0], name="DestroyAdversary"))
         sequence.add_child(ActorDestroy(self.other_actors[1], name="DestroyBlocker"))
-        sequence.add_child(DriveDistance(self.ego_vehicles[0], self._ego_end_distance, name="EndCondition"))
 
         return sequence
 
@@ -379,7 +620,7 @@ class DynamicObjectCrossing(BasicScenario):
         parallel = py_trees.composites.Parallel(
             policy=py_trees.common.ParallelPolicy.SUCCESS_ON_ONE, name="ScenarioTrigger")
 
-        parallel.add_child(MovePedestrianWithEgo(self.ego_vehicles[0], self.other_actors[0], 100))
+        parallel.add_child(RevealPedestrian(self.ego_vehicles[0], self._crossing_walker, self._reveal_distance))
 
         parallel.add_child(trigger_tree)
         return parallel

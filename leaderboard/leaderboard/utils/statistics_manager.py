@@ -59,7 +59,8 @@ FAILURE_MESSAGES = {
     "Simulation" : ["Crashed", "Simulation crashed"],
     "Sensors": ["Rejected", "Agent's sensors were invalid"],
     "Agent_init": ["Started", "Agent couldn't be set up"],
-    "Agent_runtime": ["Started", "Agent crashed"]
+    "Agent_runtime": ["Started", "Agent crashed"],
+    "Operator": ["Started", "Stopped by the operator"]
 }
 
 ROUND_DIGITS = 3

@@ -49,7 +49,11 @@ class VehiclePIDController():
         self._world = self._vehicle.get_world()
         self.past_steering = self._vehicle.get_control().steer
         self._lon_controller = PIDLongitudinalController(self._vehicle, **args_longitudinal)
-        self._lat_controller = PIDLateralController(self._vehicle, offset, **args_lateral)
+        if args_lateral.get('type') == 'pure_pursuit':
+            lateral_args = {k: v for k, v in args_lateral.items() if k != 'type'}
+            self._lat_controller = PurePursuitLateralController(self._vehicle, offset, **lateral_args)
+        else:
+            self._lat_controller = PIDLateralController(self._vehicle, offset, **args_lateral)
 
     def run_step(self, target_speed, waypoint):
         """
@@ -125,7 +129,8 @@ class PIDLongitudinalController():
         self._k_i = K_I
         self._k_d = K_D
         self._dt = dt
-        self._error_buffer = deque(maxlen=10)
+        # Errors of the last 0.5 s (10 steps at 20 Hz), whatever the simulation step
+        self._error_buffer = deque(maxlen=max(2, int(round(0.5 / dt))))
 
     def run_step(self, target_speed, debug=False):
         """
@@ -194,7 +199,8 @@ class PIDLateralController():
         self._k_d = K_D
         self._dt = dt
         self._offset = offset
-        self._e_buffer = deque(maxlen=10)
+        # Errors of the last 0.5 s (10 steps at 20 Hz), whatever the simulation step
+        self._e_buffer = deque(maxlen=max(2, int(round(0.5 / dt))))
 
     def run_step(self, waypoint):
         """
@@ -264,3 +270,76 @@ class PIDLateralController():
         self._k_i = K_I
         self._k_d = K_D
         self._dt = dt
+
+
+class PurePursuitLateralController():
+    """
+    PurePursuitLateralController steers along the circular arc that joins the rear axle
+    to the target waypoint, and converts that arc's curvature into a steering command
+    through a measured steer -> curvature map of the vehicle. Unlike the PID controller,
+    it needs no steady-state heading error to hold a curve, so it doesn't drift to the
+    outside of turns, and the map compensates for vehicles whose steering response is
+    far from linear.
+    """
+
+    def __init__(self, vehicle, offset=0, wheelbase=2.9, steer_curvature_map=None):
+        """
+        Constructor method.
+
+            :param vehicle: actor to apply to local planner logic onto
+            :param offset: distance to the center line (positive to the right)
+            :param wheelbase: distance between the front and rear axles (m)
+            :param steer_curvature_map: list of (steer, curvature in 1/m) pairs measured at
+                low speed, with steer increasing from 0. Defaults to an ideal bicycle model
+                with a 37 degree maximum wheel angle.
+        """
+        self._vehicle = vehicle
+        self._offset = offset
+        self._wheelbase = wheelbase
+        if steer_curvature_map is None:
+            steer_curvature_map = [(s, math.tan(math.radians(37.0 * s)) / wheelbase)
+                                   for s in np.linspace(0.0, 1.0, 11)]
+        self._map_steer = np.array([s for s, _ in steer_curvature_map])
+        self._map_curvature = np.array([k for _, k in steer_curvature_map])
+        self.last_curvature = 0.0  # curvature (1/m) requested on the last step
+
+    def run_step(self, waypoint):
+        """
+        Execute one step of lateral control to steer
+        the vehicle towards a certain waypoint.
+
+            :param waypoint: target waypoint
+            :return: steering control in the range [-1, 1] (positive to the right)
+        """
+        vehicle_transform = self._vehicle.get_transform()
+        f_vec = vehicle_transform.get_forward_vector()
+        f_vec = np.array([f_vec.x, f_vec.y])
+        norm = np.linalg.norm(f_vec)
+        if norm == 0:
+            return 0.0
+        f_vec /= norm
+
+        w_loc = waypoint.transform.location
+        if self._offset != 0:
+            r_vec = waypoint.transform.get_right_vector()
+            w_loc = w_loc + carla.Location(x=self._offset * r_vec.x, y=self._offset * r_vec.y)
+
+        # Pure pursuit is defined from the rear axle
+        ego_loc = vehicle_transform.location
+        rear = np.array([ego_loc.x, ego_loc.y]) - f_vec * (self._wheelbase / 2.0)
+        w_vec = np.array([w_loc.x, w_loc.y]) - rear
+        lookahead = np.linalg.norm(w_vec)
+        if lookahead < 1e-3:
+            return 0.0
+
+        # Signed sine of the angle between heading and target (positive = target on the right)
+        sin_alpha = (f_vec[0] * w_vec[1] - f_vec[1] * w_vec[0]) / lookahead
+        curvature = 2.0 * sin_alpha / lookahead
+        self.last_curvature = curvature
+
+        steer = np.interp(abs(curvature), self._map_curvature, self._map_steer)
+        return float(np.clip(math.copysign(steer, curvature), -1.0, 1.0))
+
+    def set_offset(self, offset):
+        """Changes the offset"""
+        self._offset = offset

@@ -26,6 +26,7 @@ from srunner.scenariomanager.watchdog import Watchdog
 from leaderboard.autoagents.agent_wrapper import AgentWrapperFactory, AgentError
 from leaderboard.envs.sensor_interface import SensorReceivedNoData
 from leaderboard.utils.result_writer import ResultOutputProvider
+from leaderboard.utils import step_timing
 
 
 class ScenarioManager(object):
@@ -74,6 +75,10 @@ class ScenarioManager(object):
 
         self._statistics_manager = statistics_manager
 
+        # Set by the operator's stop key (leaderboard/utils/stop_key.py): the route ends at the next tick,
+        # or doesn't start when the key was pressed while it was loading
+        self.stop_requested = False
+
         # Use the callback_id inside the signal handler to allow external interrupts
         signal.signal(signal.SIGINT, self.signal_handler)
 
@@ -103,7 +108,8 @@ class ScenarioManager(object):
         self._watchdog = None
         self._agent_watchdog = None
 
-    def load_scenario(self, scenario, agent, route_index, rep_number, failtriggers=None, llmtriggers=None):
+    def load_scenario(self, scenario, agent, route_index, rep_number, failtriggers=None, llmtriggers=None,
+                      visualization=None):
         """
         Load a new scenario
         """
@@ -117,7 +123,7 @@ class ScenarioManager(object):
         self.other_actors = scenario.other_actors
         self.repetition_number = rep_number
 
-        self._spectator = CarlaDataProvider.get_world().get_spectator()
+        # self._spectator = CarlaDataProvider.get_world().get_spectator()
 
         # To print the scenario tree uncomment the next line
         # py_trees.display.render_dot_tree(self.scenario_tree)
@@ -130,6 +136,8 @@ class ScenarioManager(object):
             self._agent_wrapper.set_failtriggers(failtriggers)
         if llmtriggers is not None:
             self._agent_wrapper.set_llmtriggers(llmtriggers)
+        if visualization is not None:
+            self._agent_wrapper.set_visualization(visualization)
 
     def build_scenarios_loop(self, debug):
         """
@@ -162,15 +170,18 @@ class ScenarioManager(object):
         self._scenario_thread = threading.Thread(target=self.build_scenarios_loop, args=(self._debug_mode > 0, ))
         self._scenario_thread.start()
 
-        while self._running:
+        while self._running and not self.stop_requested:
             self._tick_scenario()
+        self._running = False
 
     def _tick_scenario(self):
         """
         Run next tick of scenario and the agent and tick the world.
         """
+        step_timing.step_begin()
         if self._running and self.get_running_status():
-            CarlaDataProvider.get_world().tick(self._timeout)
+            with step_timing.measure('server'):
+                CarlaDataProvider.get_world().tick(self._timeout)
 
         timestamp = CarlaDataProvider.get_world().get_snapshot().timestamp
 
@@ -180,7 +191,8 @@ class ScenarioManager(object):
             self._watchdog.update()
             # Update game time and actor information
             GameTime.on_carla_tick(timestamp)
-            CarlaDataProvider.on_carla_tick()
+            with step_timing.measure('provider'):
+                CarlaDataProvider.on_carla_tick()
             self._watchdog.pause()
 
             try:
@@ -201,7 +213,9 @@ class ScenarioManager(object):
 
             # Tick scenario. Add the ego control to the blackboard in case some behaviors want to change it
             py_trees.blackboard.Blackboard().set("AV_control", ego_action, overwrite=True)
-            self.scenario_tree.tick_once()
+            with step_timing.measure('scenario'):
+                self.scenario_tree.tick_once()
+            step_timing.step_end()
 
             if self._debug_mode > 1:
                 self.compute_duration_time()
@@ -229,8 +243,8 @@ class ScenarioManager(object):
                 self._running = False
 
             ego_trans = self.ego_vehicles[0].get_transform()
-            self._spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=70),
-                                                          carla.Rotation(pitch=-90)))
+            # self._spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=70),
+            #                                               carla.Rotation(pitch=-90)))
 
     def get_running_status(self):
         """

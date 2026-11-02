@@ -40,6 +40,7 @@ from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.carla_data_provider import calculate_velocity
 from srunner.scenariomanager.actorcontrols.actor_control import ActorControl
 from srunner.scenariomanager.timer import GameTime
+from srunner.tools.roundabouts import get_roundabout_road_ids
 from srunner.tools.scenario_helper import detect_lane_obstacle
 from srunner.tools.scenario_helper import generate_target_waypoint_list_multilane
 
@@ -3408,6 +3409,7 @@ class ActorFlow(AtomicBehavior):
 
         self._source_wp = source_wp
         self._sink_wp = sink_wp
+        self._enabled = self._keep_out_of_roundabouts()
 
         self._sink_location = self._sink_wp.transform.location
         self._source_transform = self._source_wp.transform
@@ -3429,8 +3431,37 @@ class ActorFlow(AtomicBehavior):
 
         self._terminated = False
 
+    def _keep_out_of_roundabouts(self, min_length=20.0):
+        """
+        No vehicle but the ego may drive in a roundabout. If the flow's path goes through one, the flow
+        is shortened to the longest part of its path out of roundabouts: vehicles then appear after it,
+        or are removed before it. Returns False if that part is too short, disabling the flow.
+        """
+        grp = CarlaDataProvider.get_global_route_planner()
+        if grp is None:
+            return True
+        roundabout_roads = get_roundabout_road_ids(CarlaDataProvider.get_map())
+        plan = grp.trace_route(self._source_wp.transform.location, self._sink_wp.transform.location)
+        if not any(wp.road_id in roundabout_roads for wp, _ in plan):
+            return True
+
+        best, current = [], []
+        for wp, _ in plan:
+            if wp.road_id in roundabout_roads:
+                current = []
+                continue
+            current.append(wp)
+            if len(current) > len(best):
+                best = list(current)
+        # Keep a few meters of margin from the roundabout on both ends
+        best = best[3:-3]
+        if len(best) < 2 or best[0].transform.location.distance(best[-1].transform.location) < min_length:
+            return False
+        self._source_wp, self._sink_wp = best[0], best[-1]
+        return True
+
     def initialise(self):
-        if self._initial_actors:
+        if self._initial_actors and self._enabled:
             grp = CarlaDataProvider.get_global_route_planner()
             plan = grp.trace_route(self._source_location, self._sink_location)
 
@@ -3491,6 +3522,8 @@ class ActorFlow(AtomicBehavior):
                 self._actor_list.remove(actor)
 
         # Spawn new actors if needed
+        if not self._enabled:
+            return py_trees.common.Status.RUNNING
         if len(self._actor_list) == 0:
             distance = self._spawn_dist + 1
         else:
@@ -3528,9 +3561,16 @@ class ActorFlow(AtomicBehavior):
                 pass  # Actor was already destroyed
 
         for actor in self._actor_list:
+            # Stopping the flow's vehicles where they are left them standing on the road (and
+            # sometimes not removed at all): they drive on and are removed once the ego can't see them
+            try:
+                actor.disable_constant_velocity()
+            except RuntimeError:
+                continue
+            if hand_over_to_background(actor):
+                continue
             # TODO: Actors spawned in the same frame as the behavior termination won't be removed.
             # Patched by removing its movement
-            actor.disable_constant_velocity()
             actor.set_autopilot(False, CarlaDataProvider.get_traffic_manager_port())
             actor.set_target_velocity(carla.Vector3D(0,0,0))
             actor.set_target_angular_velocity(carla.Vector3D(0,0,0))
@@ -3670,7 +3710,8 @@ class OppositeActorFlow(AtomicBehavior):
                 continue
             sink_distance = self._sink_location.distance(location)
             if sink_distance < self._sink_dist:
-                CarlaDataProvider.remove_actor_by_id(actor.id)
+                if not hand_over_to_background(actor):
+                    CarlaDataProvider.remove_actor_by_id(actor.id)
                 self._actor_list.remove(actor_data)
             else:
                 actor.apply_control(controller.run_step())
@@ -3705,6 +3746,8 @@ class OppositeActorFlow(AtomicBehavior):
         self._terminated = True
 
         for actor, _ in self._actor_list:
+            if hand_over_to_background(actor):
+                continue
             # TODO: Actors spawned in the same frame as the behavior termination won't be removed.
             # Patched by removing its movement
             actor.disable_constant_velocity()
@@ -3715,6 +3758,33 @@ class OppositeActorFlow(AtomicBehavior):
                 CarlaDataProvider.remove_actor_by_id(actor.id)
             except RuntimeError:
                 pass  # Actor was already destroyed
+
+
+def hand_over_to_background(actor):
+    """
+    Instead of destroying a scenario vehicle (which could happen right in front of the ego),
+    lets the Traffic Manager drive it on and the background activity destroy it once the
+    ego can't see it (blackboard 'BA_RemoveWhenHidden'). Returns False if there's no
+    background activity running, in which case the caller has to remove it.
+    """
+    blackboard = py_trees.blackboard.Blackboard()
+    if not blackboard.get('BA_Active'):
+        return False
+    try:
+        if not actor.is_alive:
+            return True
+        actor.set_autopilot(True, CarlaDataProvider.get_traffic_manager_port())
+        # Scenario flows may have made it ignore the other vehicles / lights: it now drives normally
+        tm = CarlaDataProvider.get_client().get_trafficmanager(CarlaDataProvider.get_traffic_manager_port())
+        tm.ignore_vehicles_percentage(actor, 0)
+        tm.ignore_lights_percentage(actor, 0)
+        tm.ignore_signs_percentage(actor, 0)
+    except RuntimeError:
+        return True
+    actors = blackboard.get('BA_RemoveWhenHidden') or []
+    actors.append(actor)
+    blackboard.set('BA_RemoveWhenHidden', actors, overwrite=True)
+    return True
 
 
 class InvadingActorFlow(AtomicBehavior):

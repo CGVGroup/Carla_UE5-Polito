@@ -9,6 +9,7 @@ Scenario spawning elements to make the town dynamic and interesting
 """
 
 from collections import OrderedDict
+import math
 import py_trees
 
 import carla
@@ -18,6 +19,7 @@ from agents.navigation.local_planner import RoadOption
 from srunner.scenariomanager.carla_data_provider import CarlaDataProvider
 from srunner.scenariomanager.scenarioatomics.atomic_behaviors import AtomicBehavior
 from srunner.tools.scenario_helper import get_same_dir_lanes, get_opposite_dir_lanes
+from srunner.tools.roundabouts import get_roundabout_road_ids
 
 JUNCTION_ENTRY = 'entry'
 JUNCTION_MIDDLE = 'middle'
@@ -27,6 +29,13 @@ JUNCTION_EXIT_INACTIVE = 'exit_inactive'
 
 EGO_JUNCTION = 'junction'
 EGO_ROAD = 'road'
+
+# Areas that no background vehicle may be in or drive into (only the ego and the scenarios' own
+# vehicles may): (x, y, radius) in meters. Vehicles are neither spawned there, nor allowed to
+# drive into them, see BackgroundBehavior._update_exclusion_zones
+EXCLUSION_ZONES = [
+    (126.09, 327.30, 100.0),  # Town15, route long1, waypoint 6
+]
 
 def get_lane_key(waypoint):
     """Returns a key corresponding to the waypoint lane. Equivalent to a 'Lane'
@@ -189,6 +198,31 @@ class BackgroundBehavior(AtomicBehavior):
         self._all_actors = []
         self._lane_width_threshold = 2.25  # Used to stop some behaviors at narrow lanes to avoid problems [m]
 
+        # Vehicles are never destroyed while the ego can see them (in front of it and close
+        # enough): they are kept driving, unmanaged, and destroyed once out of its sight
+        self._sight_distance = 120  # [m]
+        self._sight_half_angle = 70  # [deg]
+        self._hidden_removal_actors = []
+
+        # Lane stretches closed by scenarios (e.g. construction sites), see _update_blocked_zones.
+        # No vehicle is ever left waiting in front of them
+        self._blocked_zones = {}  # zone id -> (list of carla.Location along the closed lane, start waypoint)
+        self._blocked_zone_lookahead = 300  # Vehicles whose lane leads into a zone within this distance are handled [m]
+        self._blocked_zone_approach = 30  # Distance before the zone at which visible vehicles start bypassing it [m]
+        self._blocked_zone_check_period = 10  # Ticks between two searches for vehicles heading into a zone
+        self._blocked_zone_tick = 0
+        self._pulling_away_speed = 70  # Speed at which visible vehicles heading into a zone leave [km/h]
+        self._zone_bypassing_actors = {}  # actor -> zone id, those driving around a zone
+
+        self._initial_spawn_done = False  # see _spawn_allowed
+        # Exclusion zones (see EXCLUSION_ZONES) and roundabouts, where no background vehicle may be:
+        # vehicles whose lane leads into one within this distance are handled [m]
+        self._roundabout_roads = get_roundabout_road_ids(self._map)
+        self._has_exclusions = bool(EXCLUSION_ZONES or self._roundabout_roads)
+        self._exclusion_lookahead = 300
+        self._exclusion_check_tick = 0
+        self._exclusion_check_period = 10  # Ticks between two searches for vehicles heading into a zone
+
         self._spawn_vertical_shift = 0.2
         self._reuse_dist = 10  # When spawning actors, might reuse actors closer to this distance
         self._spawn_free_radius = 20  # Sources closer to the ego will not spawn actors
@@ -213,7 +247,7 @@ class BackgroundBehavior(AtomicBehavior):
         self._detection_ratio = 1.5  # Meters the radius increases per m/s of the ego
 
         self._road_extra_front_actors = 0  # For cases where we want more space but not more vehicles
-        self._road_spawn_dist = 30  # Distance between spawned vehicles [m]
+        self._road_spawn_dist = 120  # Distance between spawned vehicles [m] (default CARLA: 30, far fewer vehicles here)
         self._road_extra_space = 0  # Extra space for the road vehicles
 
         self._active_road_sources = True
@@ -230,19 +264,19 @@ class BackgroundBehavior(AtomicBehavior):
         self._active_junctions = []  # List of all the active junctions
 
         self._junction_sources_dist = 40  # Distance from the entry sources to the junction [m]
-        self._junction_sources_max_actors = 2  # Maximum vehicles alive at the same time per source
-        self._junction_spawn_dist = 25  # Distance between spawned vehicles [m]
+        self._junction_sources_max_actors = 1  # Maximum vehicles alive at the same time per source (default CARLA: 2)
+        self._junction_spawn_dist = 60  # Distance between spawned vehicles [m] (default CARLA: 25)
         self._junction_minimum_source_dist = 15  # Minimum distance between sources and their junction
 
-        self._junction_source_perc = 20  # Probability [%] of the source being created
+        self._junction_source_perc = 5  # Probability [%] of the source being created (default CARLA: 20)
 
         # Opposite lane variables
         self._opposite_actors = []
         self._opposite_sources = []
         self._opposite_route_index = 0
 
-        self._opposite_spawn_dist = 60  # Distance between spawned vehicles [m]
-        self._opposite_sources_dist = 100  # Distance from the ego to the opposite sources [m]. Twice the spawn distance
+        self._opposite_spawn_dist = 200  # Distance between spawned vehicles [m] (default CARLA: 60)
+        self._opposite_sources_dist = 400  # Distance from the ego to the opposite sources [m]. Twice the spawn distance
 
         self._active_opposite_sources = False  # Flag to (de)activate all opposite sources
 
@@ -294,6 +328,9 @@ class BackgroundBehavior(AtomicBehavior):
         self._initialise_road_behavior(same_dir_wps)
         self._initialise_opposite_sources()
         self._initialise_road_checker()
+        py_trees.blackboard.Blackboard().set('BA_Active', True, overwrite=True)
+        # From now on, no vehicle is spawned where the ego can see it (see _spawn_allowed)
+        self._initial_spawn_done = True
 
     def update(self):
         prev_ego_index = self._route_index
@@ -335,13 +372,20 @@ class BackgroundBehavior(AtomicBehavior):
         # Update the speed of all vehicles
         self._set_actors_speed()
 
+        # Keep vehicles out of closed lanes, and destroy the ones waiting for the ego to look away
+        self._update_blocked_zones()
+        self._update_exclusion_zones()
+        self._update_hidden_removals()
+
         return py_trees.common.Status.RUNNING
 
     def terminate(self, new_status):
         """Destroy all actors"""
-        all_actors = list(self._actors_speed_perc)
+        all_actors = list(self._actors_speed_perc) + self._hidden_removal_actors
         for actor in list(all_actors):
-            self._destroy_actor(actor)
+            self._destroy_actor(actor, force=True)
+        self._hidden_removal_actors = []
+        py_trees.blackboard.Blackboard().set('BA_Active', False, overwrite=True)
         super(BackgroundBehavior, self).terminate(new_status)
 
     def _check_background_actors(self):
@@ -350,6 +394,266 @@ class BackgroundBehavior(AtomicBehavior):
         for actor in list(self._all_actors):
             if actor.id not in alive_ids:
                 self._remove_actor_info(actor)
+        self._hidden_removal_actors = [a for a in self._hidden_removal_actors if a.id in alive_ids]
+
+    def _is_in_ego_sight(self, location):
+        """Whether a location is in front of the ego and close enough for it to be seen"""
+        ego_transform = CarlaDataProvider.get_transform(self._ego_actor)
+        if ego_transform is None:
+            return False
+        vec = location - ego_transform.location
+        dist = math.hypot(vec.x, vec.y)
+        if dist > self._sight_distance:
+            return False
+        if dist < 1e-3:
+            return True
+        forward = ego_transform.get_forward_vector()
+        cos_angle = (vec.x * forward.x + vec.y * forward.y) / dist
+        return cos_angle > math.cos(math.radians(self._sight_half_angle))
+
+    def _update_hidden_removals(self):
+        """
+        Destroys the vehicles waiting to be removed once the ego can't see them. This also
+        picks those handed over by scenario behaviors (blackboard 'BA_RemoveWhenHidden').
+        """
+        blackboard = py_trees.blackboard.Blackboard()
+        handed_over = blackboard.get('BA_RemoveWhenHidden')
+        if handed_over:
+            for actor in handed_over:
+                if actor not in self._hidden_removal_actors:
+                    self._hidden_removal_actors.append(actor)
+            blackboard.set('BA_RemoveWhenHidden', [], overwrite=True)
+
+        for actor in list(self._hidden_removal_actors):
+            location = CarlaDataProvider.get_location(actor) if actor.is_alive else None
+            if location is None:
+                self._hidden_removal_actors.remove(actor)
+            elif not self._is_in_ego_sight(location):
+                self._destroy_actor(actor, force=True)
+
+    def _update_blocked_zones(self):
+        """
+        Adds / removes the lane stretches closed by scenarios (blackboard 'BA_BlockedZonesToAdd'
+        and 'BA_BlockedZonesToRemove'), and makes sure that no vehicle ever ends up waiting in
+        front of one:
+        - As soon as a zone is known (the scenario is built well before the ego gets there),
+          vehicles whose lane leads into it are destroyed if the ego can't see them. The ones
+          it can see are released from the background behavior and speed up to leave, being
+          destroyed as soon as they are out of the ego's sight.
+        - If one still reaches the zone in the ego's sight, it drives around it through the
+          next lane on its left (Traffic Manager lane offset), like the ego does, never stopping.
+        - The opposite lane next to the zone is kept free for the ego to drive around it: no
+          opposite vehicles are spawned while there are zones (see _update_opposite_sources), and
+          those whose lane leads into that stretch are destroyed if the ego can't see them.
+        """
+        blackboard = py_trees.blackboard.Blackboard()
+        to_add = blackboard.get('BA_BlockedZonesToAdd')
+        if to_add:
+            for zone_id, locations in to_add:
+                start_wp = self._map.get_waypoint(locations[0])
+                end_wp = self._map.get_waypoint(locations[-1])
+                opposite_wp = end_wp.get_left_lane()
+                if opposite_wp is None or opposite_wp.lane_type != carla.LaneType.Driving \
+                        or opposite_wp.lane_id * end_wp.lane_id > 0:
+                    opposite_wp = None
+                self._blocked_zones[zone_id] = (locations, start_wp, opposite_wp)
+            blackboard.set('BA_BlockedZonesToAdd', [], overwrite=True)
+        to_remove = blackboard.get('BA_BlockedZonesToRemove')
+        if to_remove:
+            for zone_id in to_remove:
+                self._blocked_zones.pop(zone_id, None)
+            blackboard.set('BA_BlockedZonesToRemove', [], overwrite=True)
+
+        # Finish the bypasses of vehicles that are past their zone
+        for actor, zone_id in list(self._zone_bypassing_actors.items()):
+            transform = CarlaDataProvider.get_transform(actor) if actor.is_alive else None
+            zone = self._blocked_zones.get(zone_id)
+            if transform is None or zone is None or self._zone_progress(transform, zone[0]) == 'past':
+                self._zone_bypassing_actors.pop(actor)
+                if transform is not None:
+                    self._tm.vehicle_lane_offset(actor, self._vehicle_offset)
+                    self._tm.set_desired_speed(actor, self._pulling_away_speed)
+
+        if not self._blocked_zones:
+            return
+
+        # Vehicles reaching a zone in the ego's sight: drive around it
+        for actor in list(self._all_actors) + list(self._hidden_removal_actors):
+            if actor in self._zone_bypassing_actors or not actor.is_alive:
+                continue
+            transform = CarlaDataProvider.get_transform(actor)
+            if transform is None:
+                continue
+            for zone_id, (locations, start_wp, _) in self._blocked_zones.items():
+                if self._zone_progress(transform, locations) != 'approaching':
+                    continue
+                self._release_actor(actor)
+                if self._is_in_ego_sight(transform.location):
+                    self._tm.vehicle_lane_offset(actor, -start_wp.lane_width)
+                    self._tm.set_desired_speed(actor, 25)
+                    self._zone_bypassing_actors[actor] = zone_id
+                else:
+                    self._destroy_actor(actor, force=True)
+                break
+
+        # Vehicles further away whose lane leads into a zone: get rid of them early
+        self._blocked_zone_tick += 1
+        if self._blocked_zone_tick % self._blocked_zone_check_period:
+            return
+        for actor in list(self._all_actors):
+            if not actor.is_alive:
+                continue
+            location = CarlaDataProvider.get_location(actor)
+            if location is None:
+                continue
+            for locations, start_wp, opposite_wp in self._blocked_zones.values():
+                if location.distance(locations[0]) > self._blocked_zone_lookahead:
+                    continue
+                actor_wp = self._map.get_waypoint(location)
+                if self._lane_leads_to(actor_wp, start_wp):
+                    if self._is_in_ego_sight(location):
+                        self._release_actor(actor)
+                        self._tm.set_desired_speed(actor, self._pulling_away_speed)
+                    else:
+                        self._destroy_actor(actor, force=True)
+                    break
+                if opposite_wp is not None and self._lane_leads_to(actor_wp, opposite_wp):
+                    # Oncoming vehicle that would drive by the zone while the ego bypasses it.
+                    # The ones the ego can already see just go by.
+                    if not self._is_in_ego_sight(location):
+                        self._destroy_actor(actor, force=True)
+                    break
+
+    def _in_exclusion_zone(self, wp):
+        """Whether a waypoint is in an exclusion zone, or in a roundabout"""
+        if wp.road_id in self._roundabout_roads:
+            return True
+        location = wp.transform.location
+        for x, y, radius in EXCLUSION_ZONES:
+            if math.hypot(location.x - x, location.y - y) < radius:
+                return True
+        return False
+
+    def _enters_exclusion_zone(self, wp, step=10.0):
+        """
+        Whether a vehicle at 'wp' is in an exclusion zone or a roundabout, or would drive into one
+        following its lane (through any branch) within the lookahead distance
+        """
+        frontier = [wp]
+        dist = 0.0
+        while frontier and dist <= self._exclusion_lookahead:
+            next_frontier = []
+            for current in frontier:
+                if self._in_exclusion_zone(current):
+                    return True
+                next_frontier.extend(current.next(step))
+            frontier = next_frontier[:4]  # bounded branching
+            dist += step
+        return False
+
+    def _update_exclusion_zones(self):
+        """
+        Keeps the background vehicles out of the exclusion zones and the roundabouts. Those in one, or
+        whose lane leads into one, are destroyed if the ego can't see them (this happens long before they
+        could get there, they're checked from far away). The ones it can see are released from the
+        background behavior and destroyed as soon as they're out of its sight. Those driving ahead of the
+        ego, in its direction, speed up to get out of its sight before reaching the zone.
+        """
+        if not self._has_exclusions:
+            return
+        self._exclusion_check_tick += 1
+        if self._exclusion_check_tick % self._exclusion_check_period:
+            return
+
+        ego_transform = CarlaDataProvider.get_transform(self._ego_actor)
+        for actor in list(self._all_actors) + list(self._hidden_removal_actors):
+            if not actor.is_alive:
+                continue
+            transform = CarlaDataProvider.get_transform(actor)
+            if transform is None:
+                continue
+            location = transform.location
+            wp = self._map.get_waypoint(location)
+            if not self._enters_exclusion_zone(wp):
+                continue
+            if not self._is_in_ego_sight(location):
+                self._destroy_actor(actor, force=True)
+                continue
+            if actor in self._all_actors:
+                self._release_actor(actor)
+            if ego_transform is not None and not self._in_exclusion_zone(wp):
+                forward = transform.get_forward_vector()
+                ego_forward = ego_transform.get_forward_vector()
+                if forward.x * ego_forward.x + forward.y * ego_forward.y > 0.5:
+                    self._tm.set_desired_speed(actor, self._pulling_away_speed)
+
+    def _spawn_allowed(self, wp):
+        """
+        Whether a background vehicle may be spawned at a waypoint: never where the ego can see it
+        (vehicles popping up in front of it, often standing still at a junction entry, look like
+        phantoms, and can even be spawned in its way), except for the initial population of the
+        route, and never in or towards an exclusion zone or a roundabout
+        """
+        if self._initial_spawn_done and self._is_in_ego_sight(wp.transform.location):
+            return False
+        if self._has_exclusions and self._enters_exclusion_zone(wp):
+            return False
+        return True
+
+    def _release_actor(self, actor):
+        """Stops managing a vehicle, which is then destroyed once the ego can't see it"""
+        self._remove_actor_info(actor)
+        if actor not in self._hidden_removal_actors:
+            self._hidden_removal_actors.append(actor)
+
+    def _lane_leads_to(self, wp, target_wp, step=5.0):
+        """Whether driving along the lane of 'wp' (any branch) reaches 'target_wp' within the lookahead"""
+        frontier = [wp]
+        dist = 0.0
+        while frontier and dist < self._blocked_zone_lookahead:
+            next_frontier = []
+            for current in frontier:
+                if current.transform.location.distance(target_wp.transform.location) < step and \
+                        current.lane_id * target_wp.lane_id > 0:
+                    return True
+                next_frontier.extend(current.next(step))
+            frontier = next_frontier[:8]  # bounded branching
+            dist += step
+        return False
+
+    def _zone_progress(self, transform, locations):
+        """
+        Where a vehicle is with respect to a closed lane stretch (a polyline along it):
+        'approaching' it (in its lane, within the approach distance, or already in it),
+        'past' it, or None if it isn't driving along it.
+        """
+        location = transform.location
+        forward = transform.get_forward_vector()
+        if location.distance(locations[0]) > self._blocked_zone_approach + location.distance(locations[-1]) + 10:
+            return None
+        for i in range(len(locations) - 1):
+            a, b = locations[i], locations[i + 1]
+            seg = b - a
+            seg_len = math.hypot(seg.x, seg.y)
+            if seg_len < 1e-3:
+                continue
+            dir_x, dir_y = seg.x / seg_len, seg.y / seg_len
+            rel = location - a
+            along = rel.x * dir_x + rel.y * dir_y
+            lateral = -rel.x * dir_y + rel.y * dir_x
+            heading = forward.x * dir_x + forward.y * dir_y
+            if heading < 0.5:
+                continue
+            last = i == len(locations) - 2
+            # The first segment is extended backwards by the approach distance, the last one
+            # forwards a bit to tell when it's past. Lateral range includes the bypass lane.
+            min_along = -self._blocked_zone_approach if i == 0 else 0
+            max_along = seg_len + (10 if last else 0)
+            if min_along <= along <= max_along and -5.0 < lateral < 1.8:
+                if last and along > seg_len + 3:
+                    return 'past'
+                return 'approaching' if lateral > -1.8 else None
+        return None
 
     ################################
     ##       Junction cache       ##
@@ -1576,7 +1880,7 @@ class BackgroundBehavior(AtomicBehavior):
                     new_opposite_sources.append(new_source)
                     self._opposite_sources.remove(new_source)
                 else:
-                    new_opposite_sources.append(Source(wp, []))
+                    new_opposite_sources.append(Source(wp, [], active=self._active_opposite_sources))
 
             self._opposite_sources = new_opposite_sources
         else:
@@ -1594,6 +1898,10 @@ class BackgroundBehavior(AtomicBehavior):
 
     def _update_opposite_sources(self):
         """Checks the opposite actor sources to see if new actors have to be created"""
+        if self._blocked_zones:
+            # A scenario closes a lane ahead (e.g. construction site): keep the opposite lane free so
+            # that the ego can drive around it. Only the scenario's own oncoming vehicle goes by.
+            return
         ego_speed = CarlaDataProvider.get_velocity(self._ego_actor)
         for source in self._opposite_sources:
             if not source.active:
@@ -2137,6 +2445,8 @@ class BackgroundBehavior(AtomicBehavior):
         ego_location = CarlaDataProvider.get_location(self._ego_actor)
         if ego_location.distance(spawn_wp.transform.location) < ego_dist:
             return None
+        if not self._spawn_allowed(spawn_wp):
+            return None
 
         spawn_transform = carla.Transform(
             spawn_wp.transform.location + carla.Location(z=self._spawn_vertical_shift),
@@ -2160,6 +2470,8 @@ class BackgroundBehavior(AtomicBehavior):
         for wp in spawn_wps:
             if ego_location.distance(wp.transform.location) < ego_dist:
                 continue
+            if not self._spawn_allowed(wp):
+                continue
             spawn_transforms.append(
                 carla.Transform(wp.transform.location + carla.Location(z=self._spawn_vertical_shift),
                                 wp.transform.rotation)
@@ -2182,6 +2494,8 @@ class BackgroundBehavior(AtomicBehavior):
         ego_location = CarlaDataProvider.get_location(self._ego_actor)
         source_transform = source.wp.transform
         if ego_location.distance(source_transform.location) < ego_dist:
+            return None
+        if not self._spawn_allowed(source.wp):
             return None
 
         new_transform = carla.Transform(
@@ -2213,6 +2527,7 @@ class BackgroundBehavior(AtomicBehavior):
         """
         # Updates their speed
         scenario_actors = self._scenario_stopped_actors + self._scenario_stopped_back_actors
+        ending_lane_actors = []
         for lane_key in self._road_dict:
             for i, actor in enumerate(self._road_dict[lane_key].actors):
                 location = CarlaDataProvider.get_location(actor)
@@ -2229,24 +2544,22 @@ class BackgroundBehavior(AtomicBehavior):
                 if actor in scenario_actors:
                     continue
 
-                # TODO: Lane changes are weird with the TM, so just stop them
+                # Lane changes are weird with the TM: vehicles reaching the end of their lane used to
+                # be stopped there for good, standing in the way of the ego where the lane merges.
+                # They are removed instead (only once the ego can't see them, see _destroy_actor)
                 actor_wp = self._map.get_waypoint(location)
                 if actor_wp.lane_width < self._lane_width_threshold:
 
                     # Ensure only ending lanes are affected. not sure if it is needed though
                     next_wps = actor_wp.next(0.5)
                     if next_wps and next_wps[0].lane_width < actor_wp.lane_width:
-                        actor.set_target_velocity(carla.Vector3D(0, 0, 0))
-                        self._actors_speed_perc[actor] = 0
-                        lights = actor.get_light_state()
-                        lights |= carla.VehicleLightState.RightBlinker
-                        lights |= carla.VehicleLightState.LeftBlinker
-                        lights |= carla.VehicleLightState.Position
-                        actor.set_light_state(carla.VehicleLightState(lights))
-                        actor.set_autopilot(False, self._tm_port)
+                        ending_lane_actors.append(actor)
                         continue
 
                 self._set_road_actor_speed(location, actor)
+
+        for actor in ending_lane_actors:
+            self._destroy_actor(actor)
 
     def _set_road_actor_speed(self, location, actor, multiplier=1):
         """
@@ -2559,9 +2872,39 @@ class BackgroundBehavior(AtomicBehavior):
         if actor in self._all_actors:
             self._all_actors.remove(actor)
 
-    def _destroy_actor(self, actor):
-        """Destroy the actor and all its references"""
+    def _release_actor(self, actor):
+        """
+        Makes a vehicle no longer managed by the background behavior drive on by itself. Without
+        this, it would keep the last speed it was given, and one that was stopped (e.g. at a
+        junction entry or a lane end) would stand still in the middle of the road for good.
+        """
+        try:
+            actor.set_autopilot(True, self._tm_port)
+            self._tm.set_desired_speed(actor, max(self._ego_target_speed, 30))
+            self._tm.update_vehicle_lights(actor, True)
+            lights = actor.get_light_state()
+            lights &= ~(carla.VehicleLightState.Brake | carla.VehicleLightState.LeftBlinker
+                        | carla.VehicleLightState.RightBlinker)
+            actor.set_light_state(carla.VehicleLightState(lights))
+        except RuntimeError:
+            pass
+
+    def _destroy_actor(self, actor, force=False):
+        """
+        Destroy the actor and all its references. Unless forced, a vehicle the ego can see is
+        only dropped from the background behavior: it keeps driving and is destroyed once the
+        ego can't see it anymore (see _update_hidden_removals), so it never vanishes in front of it.
+        """
         self._remove_actor_info(actor)
+        if not force:
+            location = CarlaDataProvider.get_location(actor) if actor.is_alive else None
+            if location is not None and self._is_in_ego_sight(location):
+                if actor not in self._hidden_removal_actors:
+                    self._hidden_removal_actors.append(actor)
+                    self._release_actor(actor)
+                return
+        if actor in self._hidden_removal_actors:
+            self._hidden_removal_actors.remove(actor)
         try:
             actor.set_autopilot(False, self._tm_port)
             CarlaDataProvider.remove_actor_by_id(actor.id)
