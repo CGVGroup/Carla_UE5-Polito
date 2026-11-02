@@ -112,6 +112,33 @@ def main():
     try:
         world = client.get_world()
 
+        # Destroy vehicles from previous runs.
+        # Step 1: Python-visible actors (standard CARLA vehicles, walkers, sensors)
+        actors = world.get_actors()
+        sensors = list(actors.filter('sensor.*'))
+        controllers = list(actors.filter('controller.ai.walker'))
+        for sensor in sensors:
+            try:
+                sensor.stop()
+            except Exception:
+                pass
+        for controller in controllers:
+            try:
+                controller.stop()
+            except Exception:
+                pass
+        others = list(actors.filter('vehicle.*')) + list(actors.filter('walker.*'))
+        if sensors + controllers:
+            client.apply_batch_sync([carla.command.DestroyActor(a.id) for a in sensors + controllers], True)
+        if others:
+            client.apply_batch_sync([carla.command.DestroyActor(a.id) for a in others], True)
+        # Step 2: vehicles spawned by UE5/VR blueprints that the Python API can't see
+        try:
+            world.set_type_string_dashboard('cleanup:vehicles')
+        except Exception as e:
+            print('server-side vehicle cleanup unavailable: %s' % e)
+        world.tick()
+
         traffic_manager = client.get_trafficmanager(args.tm_port)
         traffic_manager.set_global_distance_to_leading_vehicle(2.5)
         if args.respawn:

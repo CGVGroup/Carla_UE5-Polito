@@ -28,7 +28,14 @@
 
 #include <util/ue-header-guard-begin.h>
 #include "Misc/App.h"
+#include "Misc/CommandLine.h"
+#include "Engine/Engine.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
+#include "GameFramework/WorldSettings.h"
+#include "HAL/PlatformTime.h"
 #include "PhysicsEngine/PhysicsSettings.h"
+#include "StereoRendering.h"
 #include <util/ue-header-guard-end.h>
 
 #include <thread>
@@ -54,6 +61,24 @@ static void FCarlaEngine_SetFixedDeltaSeconds(TOptional<double> FixedDeltaSecond
 {
   FApp::SetBenchmarking(FixedDeltaSeconds.IsSet());
   FApp::SetFixedDeltaTime(FixedDeltaSeconds.Get(0.0));
+}
+
+// How long a frame waits for the client's tick before it is rendered paused
+// (VR only, see FCarlaEngine::WaitForTickCue)
+static constexpr double FCarlaEngine_VRTickWaitSeconds = 0.004;
+
+// Frames are rendered while waiting only while a frame takes less than this: a paused
+// frame can't be interrupted, so the client's tick arriving during it waits for its end
+// (with ~60 ms frames, the simulation went at half its rate). Back on below the second
+// one [s]
+static constexpr double FCarlaEngine_VRMaxFrameWorkSeconds = 0.025;
+static constexpr double FCarlaEngine_VRResumeFrameWorkSeconds = 0.018;
+
+static bool FCarlaEngine_IsStereoEnabled()
+{
+  static const bool bBlockInVR = FParse::Param(FCommandLine::Get(), TEXT("carla-vr-block-tick"));
+  return !bBlockInVR && GEngine != nullptr && GEngine->StereoRenderingDevice.IsValid() &&
+      GEngine->StereoRenderingDevice->IsStereoEnabled();
 }
 
 // =============================================================================
@@ -278,9 +303,94 @@ void FCarlaEngine::NotifyEndEpisode()
 {
   Server.NotifyEndEpisode();
   CurrentEpisode = nullptr;
+  WaitPausedWorldSettings = nullptr;
+  LastWaitEndTime = 0.0;
 }
 
-void FCarlaEngine::OnPreTick(UWorld *, ELevelTick TickType, float DeltaSeconds)
+void FCarlaEngine::SetWaitPaused(UWorld *World, bool bPaused)
+{
+  if (!bPaused)
+  {
+    if (AWorldSettings *Info = WaitPausedWorldSettings.Get())
+    {
+      Info->SetPauserPlayerState(nullptr);
+    }
+    WaitPausedWorldSettings = nullptr;
+    return;
+  }
+  AWorldSettings *Info = World != nullptr ? World->GetWorldSettings() : nullptr;
+  APlayerController *PlayerController = World != nullptr ? World->GetFirstPlayerController() : nullptr;
+  if (Info != nullptr && PlayerController != nullptr && PlayerController->PlayerState != nullptr)
+  {
+    Info->SetPauserPlayerState(PlayerController->PlayerState);
+    WaitPausedWorldSettings = Info;
+  }
+}
+
+bool FCarlaEngine::WaitForTickCue(UWorld *World)
+{
+  // In VR the headset needs a new frame every ~11 ms, far more often than the client
+  // ticks. Instead of blocking the game thread until the tick arrives, the frame is
+  // rendered with the world paused: the headset keeps tracking the head while the
+  // simulation stays frozen, so it still advances exactly one step per tick.
+  // Paused frames skip OnWorldPostActorTick, so no snapshot is sent for them.
+  const double Now = FPlatformTime::Seconds();
+  if (LastWaitEndTime > 0.0)
+  {
+    // (capped: one hitch, e.g. actors spawning, doesn't turn it off for long)
+    const double Work = FMath::Min(Now - LastWaitEndTime, 0.1);
+    FrameWorkSeconds = FrameWorkSeconds > 0.0 ? FMath::Lerp(FrameWorkSeconds, Work, 0.1) : Work;
+    if (bRenderWhileWaiting && FrameWorkSeconds > FCarlaEngine_VRMaxFrameWorkSeconds)
+    {
+      bRenderWhileWaiting = false;
+      UE_LOG(LogCarla, Log, TEXT("VR: frames take %.0f ms, no frame rendered while waiting for the client's tick"),
+          FrameWorkSeconds * 1000.0);
+    }
+    else if (!bRenderWhileWaiting && FrameWorkSeconds < FCarlaEngine_VRResumeFrameWorkSeconds)
+    {
+      bRenderWhileWaiting = true;
+      UE_LOG(LogCarla, Log, TEXT("VR: frames take %.0f ms, frames rendered again while waiting for the client's tick"),
+          FrameWorkSeconds * 1000.0);
+    }
+  }
+
+  if (bRenderWhileWaiting && FCarlaEngine_IsStereoEnabled())
+  {
+    const double Deadline = Now + FCarlaEngine_VRTickWaitSeconds;
+    do
+    {
+      Server.RunSome(1u);
+      // The client may also switch back to asynchronous mode meanwhile (end of a route): no tick comes
+      if (!bSynchronousMode || Server.TickCueReceived())
+      {
+        SetWaitPaused(World, false);
+        LastWaitEndTime = FPlatformTime::Seconds();
+        return true;
+      }
+    }
+    while (FPlatformTime::Seconds() < Deadline);
+    SetWaitPaused(World, true);
+    if (WaitPausedWorldSettings.IsValid())
+    {
+      LastWaitEndTime = FPlatformTime::Seconds();
+      return false;
+    }
+    // The world can not be paused (no player state): block as outside VR
+  }
+
+  SetWaitPaused(World, false);
+  // Until the tick, or until the client switches back to asynchronous mode (as the original loop): the
+  // server would otherwise wait forever for a tick nobody sends, frozen ("not responding")
+  do
+  {
+    Server.RunSome(1u);
+  }
+  while (bSynchronousMode && !Server.TickCueReceived());
+  LastWaitEndTime = FPlatformTime::Seconds();
+  return true;
+}
+
+void FCarlaEngine::OnPreTick(UWorld *World, ELevelTick TickType, float DeltaSeconds)
 {
   TRACE_CPUPROFILER_EVENT_SCOPE_STR(__FUNCTION__);
   if (TickType == ELevelTick::LEVELTICK_All)
@@ -298,11 +408,18 @@ void FCarlaEngine::OnPreTick(UWorld *, ELevelTick TickType, float DeltaSeconds)
       }
 
       // process RPC commands
-      do
+      if (bSynchronousMode)
       {
+        if (!WaitForTickCue(World))
+        {
+          return;  // no step this frame, it is only rendered
+        }
+      }
+      else
+      {
+        SetWaitPaused(World, false);
         Server.RunSome(1u);
       }
-      while (bSynchronousMode && !Server.TickCueReceived());
     }
     else
     {

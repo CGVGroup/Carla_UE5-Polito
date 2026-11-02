@@ -29,6 +29,7 @@
 
 #include <mutex>
 
+class AWorldSettings;
 class UCarlaSettings;
 struct FEpisodeSettings;
 
@@ -105,6 +106,12 @@ private:
 
   void OnEpisodeSettingsChanged(const FEpisodeSettings &Settings);
 
+  /// Synchronous mode: waits for the client's tick. Returns false when the frame
+  /// is only rendered (VR, world paused), without advancing the simulation.
+  bool WaitForTickCue(UWorld *World);
+
+  void SetWaitPaused(UWorld *World, bool bPaused);
+
   void ResetSimulationState();
 
   bool bIsRunning = false;
@@ -122,6 +129,16 @@ private:
   FEpisodeSettings CurrentSettings;
 
   ACarlaRecorder *Recorder = nullptr;
+
+  /// The world paused by WaitForTickCue, if any
+  TWeakObjectPtr<AWorldSettings> WaitPausedWorldSettings;
+
+  /// Time a frame takes outside WaitForTickCue (its tick and render), smoothed, when
+  /// WaitForTickCue last returned, and whether frames are rendered while waiting (only
+  /// when they are cheap: an expensive paused frame delays the client's next tick)
+  double FrameWorkSeconds = 0.0;
+  double LastWaitEndTime = 0.0;
+  bool bRenderWhileWaiting = true;
 
   FDelegateHandle OnPreTickHandle;
 

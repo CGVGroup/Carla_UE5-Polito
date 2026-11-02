@@ -348,6 +348,90 @@ private:
   bool bAckermannControlActive = false;
   FAckermannController AckermannController;
 
+  // ===========================================================================
+  // Driver takeover (VR vehicles): the driver's wheel / pedals are written by the vehicle's
+  // blueprint straight into the movement component, while the client / autopilot control is
+  // written into it by FlushVehicleControl, whichever comes last in the frame winning. When the
+  // driver presses a pedal (or the blueprint flags a takeover), the client / autopilot control
+  // stops being applied at all, until the driver presses P.
+  // ===========================================================================
+
+  /// Updates the takeover state (driver input detection, P to give the control back)
+  void UpdateDriverTakeover();
+
+public:
+
+  /// Whether the driver has taken over the control of the vehicle
+  UFUNCTION(Category = "CARLA Wheeled Vehicle", BlueprintCallable)
+  bool IsDriverTakeover() const { return bDriverTakeover; }
+
+  /// Gives the control back to the client / autopilot (as pressing P)
+  UFUNCTION(Category = "CARLA Wheeled Vehicle", BlueprintCallable)
+  void ReleaseDriverTakeover();
+
+  /// What started the current (or last) takeover: "brake", "throttle", or the blueprint flag that turned on
+  /// (e.g. "Steering_override")
+  const FString& GetDriverTakeoverCause() const { return DriverTakeoverCause; }
+
+  /// The driver's wheel and pedals this frame, as the vehicle's blueprint set them in the movement
+  /// component (read before the client / autopilot control is applied): throttle and brake 0..1, steer -1..1.
+  /// While the autopilot drives, an input the blueprint didn't set this frame keeps the autopilot's last value
+  float GetDriverThrottle() const { return DriverThrottle; }
+  float GetDriverBrake() const { return DriverBrake; }
+  float GetDriverSteer() const { return DriverSteer; }
+
+private:
+
+  bool bDriverTakeover = false;
+
+  FString DriverTakeoverCause;
+
+  float DriverThrottle = 0.0f;
+  float DriverBrake = 0.0f;
+  float DriverSteer = 0.0f;
+
+  /// After the control was given back, pedals must be released before pressing them takes over again
+  bool bWaitPedalsReleased = false;
+
+  /// Takeover flags of the vehicle's blueprint last tick (a takeover starts when one turns on)
+  bool bLastBlueprintTakeoverFlag = false;
+
+  /// Pedal value above which the driver is pressing it
+  float DriverPedalThreshold = 0.05f;
+
+  /// Ticks during which the blueprint's takeover flags are still cleared after the control was given back
+  int32 ReleaseFlagsClearTicks = 0;
+
+  /// While the driver drives, each press of the clutch (left pedal) switches between forward and reverse
+  /// (where the throttle drives the vehicle backwards). Called every tick (the pedal's rest value is learnt
+  /// while the autopilot drives)
+  void UpdateClutchReverse();
+
+  /// A clutch value whose rest value is learnt (while bLearnRest): whether the pedal is held, past half of
+  /// its travel from where it rests
+  struct FClutchAxis
+  {
+    bool bSeen = false;
+    float Rest = 0.0f;
+    float StableValue = 0.0f;
+    float StableSeconds = 0.0f;
+    /// Whether it ever moved away from its rest value
+    bool bMoved = false;
+
+    bool Update(float Value, float DeltaSeconds, bool bLearnRest);
+  };
+
+  /// The pedals' clutch axis, and the blueprint's ClutchValue
+  FClutchAxis ClutchKeyAxis;
+  FClutchAxis ClutchBlueprintAxis;
+
+  /// How much the VR vehicles' text screen (WB_text) is lowered [cm]
+  float VRTextScreenDrop = 50.0f;
+
+  /// Whether the clutch put the vehicle in reverse, and whether it was held last tick
+  bool bClutchReverse = false;
+  bool bClutchWasPressed = false;
+
   float RolloverBehaviorForce = 0.35;
   int RolloverBehaviorTracker = 0;
   float RolloverFlagTime = 5.0f;

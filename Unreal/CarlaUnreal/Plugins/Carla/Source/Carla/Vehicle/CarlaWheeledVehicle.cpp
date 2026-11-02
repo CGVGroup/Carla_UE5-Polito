@@ -10,6 +10,7 @@
 #include "Carla.h"
 #include "Carla/Game/CarlaHUD.h"
 #include "Carla/Game/CarlaStatics.h"
+#include "Carla/Util/VRLog.h"
 #include "Carla/Trigger/FrictionTrigger.h"
 #include "Carla/Util/ActorAttacher.h"
 #include "Carla/Util/EmptyActor.h"
@@ -26,6 +27,9 @@
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "PhysicsEngine/PhysicsObjectExternalInterface.h"
+#include "GameFramework/PlayerController.h"
+#include "InputCoreTypes.h"
+#include "ChaosWheeledVehicleMovementComponent.h"
 #include <util/ue-header-guard-end.h>
 
 // =============================================================================
@@ -57,9 +61,40 @@ ACarlaWheeledVehicle::ACarlaWheeledVehicle(const FObjectInitializer& ObjectIniti
 
 ACarlaWheeledVehicle::~ACarlaWheeledVehicle() {}
 
+namespace VehicleVRBoarding
+{
+  static bool IsVRVehicle(const AActor* Actor)
+  {
+    for (const UClass* Class = Actor ? Actor->GetClass() : nullptr; Class != nullptr; Class = Class->GetSuperClass())
+    {
+      if (Class->GetName().StartsWith(TEXT("BP_Master_VehiclesVR")))
+      {
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
 void ACarlaWheeledVehicle::BeginPlay()
 {
   Super::BeginPlay();
+
+  // The VR vehicles' text screen (BP_Master_VehiclesVR's WB_text widget, on the right of the wheel) is
+  // lowered so it hides less of the road
+  if (VehicleVRBoarding::IsVRVehicle(this))
+  {
+    TArray<USceneComponent*> SceneComponents;
+    GetComponents(SceneComponents);
+    for (USceneComponent* Component : SceneComponents)
+    {
+      if (Component != nullptr && Component->GetName().StartsWith(TEXT("WB_text")))
+      {
+        Component->AddWorldOffset(-GetActorUpVector() * VRTextScreenDrop);
+        CARLA_VR_LOG(TEXT("%s: %s lowered by %.0f cm"), *GetName(), *Component->GetName(), VRTextScreenDrop);
+      }
+    }
+  }
 
   UDefaultMovementComponent::CreateDefaultMovementComponent(this);
 
@@ -296,6 +331,25 @@ float ACarlaWheeledVehicle::GetMaximumSteerAngle() const
 
 void ACarlaWheeledVehicle::FlushVehicleControl()
 {
+  UpdateDriverTakeover();
+  if (bDriverTakeover)
+  {
+    // The driver drives: the movement component keeps the inputs the vehicle's blueprint set from the
+    // wheel and pedals, the client / autopilot control is dropped
+    UChaosWheeledVehicleMovementComponent* MovementComponent = GetChaosWheeledVehicleMovementComponent();
+    if (MovementComponent != nullptr)
+    {
+      LastAppliedControl.Gear = MovementComponent->GetTargetGear();
+      LastAppliedControl.bReverse = bClutchReverse;
+      LastAppliedControl.Throttle = MovementComponent->GetThrottleInput();
+      LastAppliedControl.Steer = MovementComponent->GetSteeringInput();
+      LastAppliedControl.Brake = MovementComponent->GetBrakeInput();
+      LastAppliedControl.bHandBrake = MovementComponent->GetHandbrakeInput();
+    }
+    InputControl.Priority = EVehicleInputPriority::INVALID;
+    return;
+  }
+
   if (bAckermannControlActive) {
     AckermannController.UpdateVehicleState(this);
     AckermannController.RunLoop(InputControl.Control);
@@ -304,6 +358,239 @@ void ACarlaWheeledVehicle::FlushVehicleControl()
   InputControl.Control.bReverse = InputControl.Control.Gear < 0;
   LastAppliedControl = InputControl.Control;
   InputControl.Priority = EVehicleInputPriority::INVALID;
+}
+
+namespace DriverTakeover
+{
+  /// The first takeover flag of the vehicle's blueprint that is on (BP_Master_VehiclesVR), NAME_None if none
+  static FName BlueprintFlag(const AActor* Vehicle)
+  {
+    static const FName Flags[] = {
+      FName(TEXT("overrideAutopilot")), FName(TEXT("Steering_override")),
+      FName(TEXT("Throttle_override")), FName(TEXT("Brake_override")) };
+    for (const FName& Flag : Flags)
+    {
+      const FBoolProperty* Property = FindFProperty<FBoolProperty>(Vehicle->GetClass(), Flag);
+      if (Property != nullptr && Property->GetPropertyValue_InContainer(Vehicle))
+      {
+        return Flag;
+      }
+    }
+    return NAME_None;
+  }
+
+  /// Turns off the takeover flags of the vehicle's blueprint
+  static void ClearBlueprintFlags(AActor* Vehicle)
+  {
+    static const FName Flags[] = {
+      FName(TEXT("overrideAutopilot")), FName(TEXT("Steering_override")),
+      FName(TEXT("Throttle_override")), FName(TEXT("Brake_override")) };
+    for (const FName& Flag : Flags)
+    {
+      if (FBoolProperty* Property = FindFProperty<FBoolProperty>(Vehicle->GetClass(), Flag))
+      {
+        Property->SetPropertyValue_InContainer(Vehicle, false);
+      }
+    }
+  }
+}
+
+void ACarlaWheeledVehicle::UpdateDriverTakeover()
+{
+  UChaosWheeledVehicleMovementComponent* MovementComponent = GetChaosWheeledVehicleMovementComponent();
+  if (MovementComponent == nullptr)
+  {
+    return;
+  }
+
+  // The driver's inputs this frame (logged by the gaze recorder)
+  DriverThrottle = MovementComponent->GetThrottleInput();
+  DriverBrake = MovementComponent->GetBrakeInput();
+  DriverSteer = MovementComponent->GetSteeringInput();
+
+  // The clutch: reverse gear while it is held and the driver drives
+  UpdateClutchReverse();
+
+  // P gives the control back to the client / autopilot
+  if (bDriverTakeover)
+  {
+    APlayerController* PlayerController = GetWorld() != nullptr ? GetWorld()->GetFirstPlayerController() : nullptr;
+    if (PlayerController != nullptr && PlayerController->WasInputKeyJustPressed(EKeys::P))
+    {
+      ReleaseDriverTakeover();
+    }
+    return;
+  }
+
+  // Pedals as set by the driver: what the movement component holds besides what was written there
+  // from the client / autopilot control last time
+  const float Throttle = MovementComponent->GetThrottleInput();
+  const float Brake = MovementComponent->GetBrakeInput();
+  const bool bThrottlePressed = Throttle > DriverPedalThreshold
+      && FMath::Abs(Throttle - LastAppliedControl.Throttle) > DriverPedalThreshold;
+  const bool bBrakePressed = Brake > DriverPedalThreshold
+      && FMath::Abs(Brake - LastAppliedControl.Brake) > DriverPedalThreshold;
+  const bool bPedalPressed = bThrottlePressed || bBrakePressed;
+  if (bWaitPedalsReleased)
+  {
+    if (Throttle <= DriverPedalThreshold && Brake <= DriverPedalThreshold)
+    {
+      bWaitPedalsReleased = false;
+    }
+  }
+
+  // Right after P, the blueprint's flags are kept off (its own P handling may toggle them)
+  if (ReleaseFlagsClearTicks > 0)
+  {
+    --ReleaseFlagsClearTicks;
+    DriverTakeover::ClearBlueprintFlags(this);
+  }
+
+  // The blueprint's own takeover detection (e.g. turning the wheel away from the autopilot's steering)
+  const FName BlueprintFlagOn = DriverTakeover::BlueprintFlag(this);
+  const bool bBlueprintFlag = BlueprintFlagOn != NAME_None;
+  const bool bBlueprintTakeover = bBlueprintFlag && !bLastBlueprintTakeoverFlag;
+  bLastBlueprintTakeoverFlag = bBlueprintFlag;
+
+  if ((bPedalPressed && !bWaitPedalsReleased) || bBlueprintTakeover)
+  {
+    bDriverTakeover = true;
+    DriverTakeoverCause = (bPedalPressed && !bWaitPedalsReleased)
+        ? FString(bBrakePressed ? TEXT("brake") : TEXT("throttle"))
+        : BlueprintFlagOn.ToString();
+    // The autopilot's throttle (and brake) must not stay applied: from now on they only come from the
+    // driver's pedals. The pedal the driver is pressing, if any, keeps its value
+    if (!bThrottlePressed)
+    {
+      MovementComponent->SetThrottleInput(0.0f);
+      LastAppliedControl.Throttle = 0.0f;
+    }
+    if (!bBrakePressed)
+    {
+      MovementComponent->SetBrakeInput(0.0f);
+      LastAppliedControl.Brake = 0.0f;
+    }
+    CARLA_VR_LOG(TEXT("%s: the driver takes over the control (%s)"), *GetName(),
+        bPedalPressed ? TEXT("pedal") : TEXT("steering wheel"));
+  }
+}
+
+bool ACarlaWheeledVehicle::FClutchAxis::Update(float Value, float DeltaSeconds, bool bLearnRest)
+{
+  if (!bSeen)
+  {
+    bSeen = true;
+    Rest = StableValue = Value;
+  }
+  // The rest value is learnt while the autopilot drives (the left foot is off the pedal), once the value
+  // has stayed the same for a second: depending on the device, the pedal rests at 0, -1 or 1
+  if (FMath::Abs(Value - StableValue) > 0.02f)
+  {
+    StableValue = Value;
+    StableSeconds = 0.0f;
+  }
+  else
+  {
+    StableSeconds += DeltaSeconds;
+  }
+  if (bLearnRest && StableSeconds > 1.0f)
+  {
+    Rest = StableValue;
+  }
+  // Pressed past half of its travel (1 when resting at 0, 2 when resting at -1 or 1)
+  const float Travel = FMath::Abs(Rest) > 0.5f ? 2.0f : 1.0f;
+  if (FMath::Abs(Value - Rest) > 0.2f * Travel)
+  {
+    bMoved = true;
+  }
+  return FMath::Abs(Value - Rest) > 0.5f * Travel;
+}
+
+void ACarlaWheeledVehicle::UpdateClutchReverse()
+{
+  UChaosWheeledVehicleMovementComponent* MovementComponent = GetChaosWheeledVehicleMovementComponent();
+  UWorld* World = GetWorld();
+  if (MovementComponent == nullptr || World == nullptr)
+  {
+    return;
+  }
+  const float DeltaSeconds = World->GetDeltaSeconds();
+
+  // The clutch axis of the pedals (the input mapping IMC_CarlaVR maps it to IA_Clutch), read directly, and the
+  // blueprint's ClutchValue (if its controller forwards IA_Clutch to the vehicle)
+  bool bKeyPressed = false;
+  float RawClutch = 0.0f;
+  APlayerController* PlayerController = World->GetFirstPlayerController();
+  if (PlayerController != nullptr)
+  {
+    static const FKey ClutchKey(TEXT("Joystick_Thrustmaster_T300RS_Racing_Wheel_Axis_3"));
+    RawClutch = PlayerController->GetInputAnalogKeyState(ClutchKey);
+    bKeyPressed = ClutchKeyAxis.Update(RawClutch, DeltaSeconds, !bDriverTakeover);
+  }
+  bool bBlueprintPressed = false;
+  float BlueprintClutch = 0.0f;
+  if (const FNumericProperty* ClutchProperty = FindFProperty<FNumericProperty>(GetClass(), TEXT("ClutchValue")))
+  {
+    BlueprintClutch = static_cast<float>(
+        ClutchProperty->GetFloatingPointPropertyValue(ClutchProperty->ContainerPtrToValuePtr<void>(this)));
+    bBlueprintPressed = ClutchBlueprintAxis.Update(BlueprintClutch, DeltaSeconds, !bDriverTakeover);
+  }
+  // The pedal's own axis once it moved: the blueprint's ClutchValue is only set while the input is triggered,
+  // so after a release it keeps its last value (the clutch looked held for good)
+  const bool bClutchPressed = ClutchKeyAxis.bMoved ? bKeyPressed : bBlueprintPressed;
+
+  const bool bClutchJustPressed = bClutchPressed && !bClutchWasPressed;
+  bClutchWasPressed = bClutchPressed;
+
+  // Only while the driver drives (the autopilot sets its own gear)
+  if (!bDriverTakeover)
+  {
+    return;
+  }
+  // Each press of the clutch switches between forward and reverse
+  if (bClutchJustPressed)
+  {
+    bClutchReverse = !bClutchReverse;
+    CARLA_VR_LOG(TEXT("%s: clutch pressed (pedal axis %.2f, blueprint ClutchValue %.2f), %s gear"), *GetName(),
+        RawClutch, BlueprintClutch, bClutchReverse ? TEXT("reverse") : TEXT("forward"));
+  }
+
+  // The gear is checked every tick: SetTargetGear does nothing when asked for the gear the movement component
+  // last reported (a tick late), and the blueprint may shift on its own. The throttle drives backwards in
+  // reverse gear only when it is not 'reverse as brake' (which shifts back to first gear on the throttle)
+  MovementComponent->bReverseAsBrake = false;
+  const int32 TargetGear = MovementComponent->GetTargetGear();
+  const int32 CurrentGear = MovementComponent->GetCurrentGear();
+  if (bClutchReverse && (TargetGear >= 0 || CurrentGear >= 0))
+  {
+    MovementComponent->SetTargetGear(-1, true);
+  }
+  else if (!bClutchReverse && (TargetGear < 0 || CurrentGear < 0))
+  {
+    MovementComponent->SetTargetGear(1, true);
+  }
+}
+
+void ACarlaWheeledVehicle::ReleaseDriverTakeover()
+{
+  if (!bDriverTakeover)
+  {
+    return;
+  }
+  if (bClutchReverse)
+  {
+    bClutchReverse = false;
+    if (UChaosWheeledVehicleMovementComponent* MovementComponent = GetChaosWheeledVehicleMovementComponent())
+    {
+      MovementComponent->SetTargetGear(1, true);
+    }
+  }
+  bDriverTakeover = false;
+  bWaitPedalsReleased = true;
+  DriverTakeover::ClearBlueprintFlags(this);
+  ReleaseFlagsClearTicks = 10;
+  bLastBlueprintTakeoverFlag = true;  // a flag has to turn off before turning on takes over again
+  CARLA_VR_LOG(TEXT("%s: control given back to the autopilot"), *GetName());
 }
 
 void ACarlaWheeledVehicle::SetThrottleInput(const float Value)
@@ -809,6 +1096,50 @@ FVector ACarlaWheeledVehicle::GetVelocity() const
 void ACarlaWheeledVehicle::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
   //ShowDebugTelemetry(false);
+  if (EndPlayReason == EEndPlayReason::Destroyed)
+  {
+    // The parts of the VR vehicles' interior attached to the vehicle (driving seat with its steering wheel
+    // and pedals, mirrors) are destroyed with it, instead of staying where it was. Everything else is only
+    // detached: the player's pawn, CARLA's own actors (sensors, left to their client), and the dashboard
+    // blueprint's elements (bounding boxes, prediction arrows: BP_DashboardManager reuses them)
+    UWorld* World = GetWorld();
+    APlayerController* PlayerController = World != nullptr ? World->GetFirstPlayerController() : nullptr;
+    APawn* PlayerPawn = PlayerController != nullptr ? PlayerController->GetPawn() : nullptr;
+    UCarlaEpisode* Episode = UCarlaStatics::GetCurrentEpisode(World);
+    TArray<AActor*> AttachedActors;
+    GetAttachedActors(AttachedActors, true, true);
+    for (AActor* Attached : AttachedActors)
+    {
+      if (!IsValid(Attached) || Attached->IsActorBeingDestroyed())
+      {
+        continue;
+      }
+      if (PlayerPawn != nullptr && (Attached == PlayerPawn || Attached->IsAttachedTo(PlayerPawn)))
+      {
+        if (Attached == PlayerPawn)
+        {
+          PlayerPawn->DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+        }
+        continue;
+      }
+      if (Attached->GetParentActor() != nullptr ||
+          (Episode != nullptr && Episode->FindCarlaActor(Attached) != nullptr))
+      {
+        continue;  // child actors are destroyed by their component, CARLA actors by their client
+      }
+      bool bInteriorPart = false;
+      for (const UClass* Class = Attached->GetClass(); Class != nullptr && !bInteriorPart; Class = Class->GetSuperClass())
+      {
+        const FString ClassName = Class->GetName();
+        bInteriorPart = ClassName.Contains(TEXT("DrivingSeat")) || ClassName.Contains(TEXT("Mirrors")) ||
+            ClassName.Contains(TEXT("Steering"));
+      }
+      if (bInteriorPart)
+      {
+        Attached->Destroy();
+      }
+    }
+  }
   Super::EndPlay(EndPlayReason);
   RemoveReferenceToManager();
 }

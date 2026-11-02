@@ -24,6 +24,7 @@
 #include <util/ue-header-guard-begin.h>
 #include "Engine/StaticMeshActor.h"
 #include "EngineUtils.h"
+#include "GameFramework/GameModeBase.h"
 #include "GameFramework/SpectatorPawn.h"
 #include "GenericPlatform/GenericPlatformProcess.h"
 #include "Kismet/GameplayStatics.h"
@@ -104,8 +105,27 @@ bool UCarlaEpisode::LoadNewEpisode(const FString &MapString, bool ResetSettings)
 
   if (bIsFileFound)
   {
-    UE_LOG(LogCarla, Warning, TEXT("Loading a new episode: %s"), *FinalPath);
-    UGameplayStatics::OpenLevel(GetWorld(), *FinalPath, true);
+    // Keep the options the current level was opened with, above all its game mode ("game=", e.g. the
+    // CarlaVR one chosen by the VR main menu): without it the new level runs the default game mode, and
+    // the VR vehicles spawned afterwards don't take the player on board anymore
+    FString Options;
+    UWorld* World = GetWorld();
+    if (World != nullptr)
+    {
+        bool bHasGameOption = false;
+        for (const FString& Option : World->URL.Op)
+        {
+            bHasGameOption = bHasGameOption || Option.StartsWith(TEXT("game="), ESearchCase::IgnoreCase);
+            Options += (Options.IsEmpty() ? TEXT("") : TEXT("?")) + Option;
+        }
+        AGameModeBase* GameMode = World->GetAuthGameMode();
+        if (!bHasGameOption && GameMode != nullptr)
+        {
+            Options += (Options.IsEmpty() ? TEXT("") : TEXT("?")) + FString(TEXT("game=")) + GameMode->GetClass()->GetPathName();
+        }
+    }
+    UE_LOG(LogCarla, Warning, TEXT("Loading a new episode: %s (options: %s)"), *FinalPath, *Options);
+    UGameplayStatics::OpenLevel(World, *FinalPath, true, Options);
     if (ResetSettings)
       ApplySettings(FEpisodeSettings{});
     

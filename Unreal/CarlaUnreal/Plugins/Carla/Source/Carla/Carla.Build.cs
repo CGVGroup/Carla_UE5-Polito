@@ -119,7 +119,9 @@ public class Carla :
       "PhysicsCore",
       "MeshConversion",
       "Chaos",
-      "ChaosVehicles"
+      "ChaosVehicles",
+      "InputCore",  // EKeys (P gives the control back after a driver takeover, see CarlaWheeledVehicle)
+      "EyeTracker"  // driver's gaze recording (see GazeRecorder)
     });
 
     PublicDependencyModuleNames.AddRange(new string[]
